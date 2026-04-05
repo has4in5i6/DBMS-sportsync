@@ -1,11 +1,11 @@
 const db = require('../db');
 
 exports.listAllCourts = async () => {
-  const [rows] = await db.query('SELECT * FROM courts');
-  return rows;
+  const result = await db.query('SELECT * FROM courts');
+  return result.rows;
 };
 
 exports.getCourtById = async (courtId) => {
-  const [rows] = await db.query('SELECT * FROM courts WHERE id = ?', [courtId]);
-  return rows[0];
+  const result = await db.query('SELECT * FROM courts WHERE id = $1', [courtId]);
+  return result.rows[0];
 };

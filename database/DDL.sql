@@ -1,13 +1,14 @@
 CREATE TABLE users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  email VARCHAR(150) NOT NULL UNIQUE,
-  password VARCHAR(255) NOT NULL,
-  role ENUM('player','coach','owner') NOT NULL DEFAULT 'player'
+  user_id SERIAL PRIMARY KEY,
+  username VARCHAR(50) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  email VARCHAR(150),
+  name VARCHAR(100),
+  role VARCHAR(20) NOT NULL DEFAULT 'player'
 );
 
 CREATE TABLE courts (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   location VARCHAR(255),
   surface VARCHAR(50),
@@ -15,20 +16,20 @@ CREATE TABLE courts (
 );
 
 CREATE TABLE coaches (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   specialty VARCHAR(100),
   hourly_rate DECIMAL(10,2)
 );
 
 CREATE TABLE bookings (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   user_id INT NOT NULL,
   court_id INT NOT NULL,
   coach_id INT,
-  start_time DATETIME NOT NULL,
-  end_time DATETIME NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users(id),
+  start_time TIMESTAMP NOT NULL,
+  end_time TIMESTAMP NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(user_id),
   FOREIGN KEY (court_id) REFERENCES courts(id),
   FOREIGN KEY (coach_id) REFERENCES coaches(id)
 );

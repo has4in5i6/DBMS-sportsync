@@ -1,12 +1,12 @@
 const { addBooking, fetchBookings, removeBooking, fetchCoachSchedule } = require('../models/bookingModel');
 
 exports.createBooking = async (req, res) => {
-  const booking = await addBooking(req.body);
+  const booking = await addBooking({ ...req.body, userId: req.session.user.user_id });
   res.status(201).json({ booking });
 };
 
 exports.getBookings = async (req, res) => {
-  const bookings = await fetchBookings(req.user.id);
+  const bookings = await fetchBookings(req.session.user.user_id);
   res.json({ bookings });
 };
 
