@@ -11,3 +11,9 @@ export const signup = (data) => request('/auth/signup', {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify(data),
 });
+
+// TODO: Implement logout function
+// export const logout = () => request('/auth/logout', { method: 'POST' });
+
+// TODO: Implement check login status
+// export const checkLogin = () => request('/auth/isLoggedIn');

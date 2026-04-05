@@ -3,7 +3,8 @@ const db = require('../db');
 
 exports.signup = async (req, res) => {
   const { username, password, email, name, role } = req.body;
-
+  // TODO: Add email validation (check format and uniqueness)
+  // TODO: Add password strength requirements
   try {
     const hash = await bcrypt.hash(password, 10);
 

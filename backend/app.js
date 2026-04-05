@@ -43,6 +43,11 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/courts', courtRoutes);
 app.use('/api/coaches', coachRoutes);
 
+// TODO: Add error handling middleware
+// TODO: Add logging middleware
+// TODO: Add rate limiting for API endpoints
+// TODO: Add search routes for courts/coaches
+
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });

@@ -90,3 +90,53 @@ sportsync/
 ## 7. Notes
 
 This template is designed to reflect the SportSync platform goals: matchmaking, booking, and scheduling across players, coaches, and court owners.
+
+## 8. TODOs
+
+### Database Setup
+- [ ] Run `DDL.sql` to create tables in PostgreSQL database
+- [ ] Populate sample data using `Data.sql` (or create inserts for users, courts, coaches, bookings)
+- [ ] Verify database connection and test basic queries
+
+### Backend Development
+- [ ] Implement booking conflict detection (time overlap checks) in `bookingController.js` and `utils/timeUtils.js`
+- [ ] Add search and filtering for coaches/courts (e.g., by location, sport, availability) in new search routes
+- [ ] Enhance user roles: Add owner-specific routes and controllers for managing courts
+- [ ] Add group formation features (inspired by lab5-files) for players to create/join groups
+- [ ] Implement rating and review system for coaches and courts
+- [ ] Add email validation and forgot password functionality
+- [ ] Error handling and logging middleware
+- [ ] API documentation (e.g., using Swagger)
+
+### Frontend Development
+- [ ] Update `AuthContext.jsx` to handle login/signup/logout with backend sessions
+- [ ] Implement auth pages (Login, Signup) with form validation
+- [ ] Build player dashboard: Display bookings, search coaches/courts, profile management
+- [ ] Build coach dashboard: Manage schedule, view bookings, update profile
+- [ ] Build owner dashboard: Add/edit courts, view bookings/utilization
+- [ ] Add booking forms with date/time pickers and conflict prevention
+- [ ] Implement search pages with filters (location, sport, etc.)
+- [ ] Add group management pages (create/join groups, like lab5-files)
+- [ ] Responsive design and UI polishing
+- [ ] Integrate API services in `api.js` and `authService.js`
+
+### Testing and Validation
+- [ ] Unit tests for models and controllers (e.g., using Jest)
+- [ ] Integration tests for API endpoints
+- [ ] Frontend component tests
+- [ ] End-to-end testing for booking flows
+- [ ] Validate against lab4/lab5 patterns (e.g., session auth, bcrypt)
+
+### Deployment and Production
+- [ ] Set up environment variables for production
+- [ ] Dockerize backend and frontend
+- [ ] Configure CORS for production domains
+- [ ] Add rate limiting and security middleware
+- [ ] Database migrations for schema updates
+- [ ] CI/CD pipeline setup
+
+### Additional Features (Future)
+- [ ] Real-time notifications (e.g., booking confirmations)
+- [ ] Payment integration for bookings
+- [ ] Mobile app version
+- [ ] Analytics dashboard for owners/coaches

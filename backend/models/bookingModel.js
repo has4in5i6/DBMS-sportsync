@@ -21,3 +21,13 @@ exports.fetchCoachSchedule = async (coachId) => {
   const result = await db.query('SELECT * FROM bookings WHERE coach_id = $1', [coachId]);
   return result.rows;
 };
+
+// TODO: Add function to check for booking conflicts (time overlaps)
+// exports.checkBookingConflict = async (courtId, coachId, startTime, endTime) => {
+//   // Query for overlapping bookings
+// };
+
+// TODO: Add function to fetch available time slots for a court/coach
+// exports.getAvailableSlots = async (courtId, coachId, date) => {
+//   // Logic to find free slots
+// };
