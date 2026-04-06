@@ -1,14 +1,24 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'; // Updated to match backend port
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
-// TODO: Add proper error handling and status code checks
-// TODO: Include credentials for session-based auth
-export const request = async (path, options = {}) => {
+export async function request(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
     ...options,
-    credentials: 'include', // For session cookies
   });
-  if (!response.ok) {
-    throw new Error(`API Error: ${response.status}`);
+
+  if (response.status === 204) {
+    return null;
   }
-  return response.json();
-};
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.message || `Request failed with status ${response.status}`);
+  }
+
+  return data;
+}

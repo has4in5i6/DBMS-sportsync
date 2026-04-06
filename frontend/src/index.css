@@ -1,8 +1,11 @@
 body {
   margin: 0;
-  padding: 0;
-  background: #f4f6fb;
-  color: #222;
+  font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+  color: #1d2a22;
+}
+
+a {
+  color: inherit;
 }
 
 #root {

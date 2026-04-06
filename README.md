@@ -1,142 +1,228 @@
 # SportSync
 
-## 1. Problem Statement
+SportSync is a full-stack sports matchmaking and booking platform built from your project outline using:
 
-Local and semi-professional sports ecosystems often struggle with coordination between players, coaches, and court owners. Players have trouble finding reliable coaches and available courts, coaches lack visibility, and court infrastructure is underutilized. These gaps create inefficiencies in discovery, scheduling, and coordination.
+- `Node.js + Express` for the backend API
+- `React + Vite` for the frontend
+- `PostgreSQL` for the database
 
-## 2. Proposed Solution
+It supports the core features from the PDF:
 
-SportSync is a Sports Matchmaking and Booking Platform that connects players, coaches, and court owners in a unified system for seamless discovery, scheduling, and interaction.
+- user authentication and role-based access
+- player, coach, and owner profile management
+- coach and court search with filters
+- booking with time conflict detection
+- weekly availability schedules for coaches and courts
+- player group creation and joining
+- ratings and reviews
+- owner court management and booking visibility
 
-### Players
-- Create profiles with sport interests, skill level, and availability
-- Discover and book suitable coaches and courts based on preferences
-- Form groups for regular play and coordination
+## Project Structure
 
-### Coaches
-- Maintain profiles with experience, ratings, and coaching history
-- Define available time slots and manage session bookings
-- Provide training sessions and receive feedback from players
-
-### Court Owners
-- List courts with details such as location, sport type, and pricing
-- Manage availability schedules and handle booking requests
-- Monitor court utilization and maintain facility information
-
-## 3. Core Functionalities
-
-- User authentication and profile management
-- Search and filtering of coaches and courts
-- Booking system with time-slot conflict handling
-- Scheduling of coaching sessions and court usage
-- Group formation for players
-- Rating and review system
-
-## 4. Implementation Plan
-
-- Frontend: React with Vite
-- Backend: REST APIs using Node.js and Express
-- Database: SQL (PostgreSQL-compatible schema)
-- Booking conflict detection: time interval overlap logic
-- Role-based access control for players, coaches, and owners
-
-## 5. Repository Structure
-
-```
-sportsync/
-│
-├── backend/              # Node.js API server
-├── frontend/             # React Vite app
-├── database/             # SQL schema, sample data, and queries
+```text
+dbms-sportsync/
+├── backend/
+├── frontend/
+├── database/
+│   ├── DDL.sql
+│   ├── Data.sql
+│   └── queries.sql
 └── README.md
 ```
 
-### backend/
-- `app.js`: main server entrypoint
-- `db.js`: database connection
-- `routes/`: API route definitions
-- `controllers/`: route logic and handlers
-- `models/`: SQL query layer
-- `middleware/`: authentication and role-based access control
-- `utils/`: helper logic such as booking conflict checks
+## Database Setup
 
-### frontend/
-- `src/`: React app source
-- `src/pages/`: pages for auth, player, coach, and owner flows
-- `src/components/`: reusable UI components
-- `src/services/`: API request helpers
-- `src/context/`: global auth and state management
+You said your PostgreSQL database is already created as `sportsync` and your PostgreSQL username is `anusri`.
 
-### database/
-- `DDL.sql`: schema definitions
-- `Data.sql`: sample seed data
-- `queries.sql`: example SQL queries
+Run these commands:
 
-## 6. Getting Started
+```bash
+psql -U anusri -d sportsync -f database/DDL.sql
+psql -U anusri -d sportsync -f database/Data.sql
+```
 
-1. Install backend dependencies:
-   ```bash
-   cd backend
-   npm install
-   ```
-2. Install frontend dependencies:
-   ```bash
-   cd ../frontend
-   npm install
-   ```
-3. Configure database connection in `backend/.env`
-4. Run the backend server and frontend app separately
+If PostgreSQL asks for a password, enter your PostgreSQL password. If your user has no password, just press Enter.
 
-## 7. Notes
+### Seed Login Accounts
 
-This template is designed to reflect the SportSync platform goals: matchmaking, booking, and scheduling across players, coaches, and court owners.
+Use these sample accounts after importing `Data.sql`:
 
-## 8. TODOs
+```text
+Player:
+username: ananya_player
+password: player123
 
-### Database Setup
-- [ ] Run `DDL.sql` to create tables in PostgreSQL database
-- [ ] Populate sample data using `Data.sql` (or create inserts for users, courts, coaches, bookings)
-- [ ] Verify database connection and test basic queries
+Player:
+username: rahul_player
+password: player123
 
-### Backend Development
-- [ ] Implement booking conflict detection (time overlap checks) in `bookingController.js` and `utils/timeUtils.js`
-- [ ] Add search and filtering for coaches/courts (e.g., by location, sport, availability) in new search routes
-- [ ] Enhance user roles: Add owner-specific routes and controllers for managing courts
-- [ ] Add group formation features (inspired by lab5-files) for players to create/join groups
-- [ ] Implement rating and review system for coaches and courts
-- [ ] Add email validation and forgot password functionality
-- [ ] Error handling and logging middleware
-- [ ] API documentation (e.g., using Swagger)
+Coach:
+username: coach_meera
+password: coach123
 
-### Frontend Development
-- [ ] Update `AuthContext.jsx` to handle login/signup/logout with backend sessions
-- [ ] Implement auth pages (Login, Signup) with form validation
-- [ ] Build player dashboard: Display bookings, search coaches/courts, profile management
-- [ ] Build coach dashboard: Manage schedule, view bookings, update profile
-- [ ] Build owner dashboard: Add/edit courts, view bookings/utilization
-- [ ] Add booking forms with date/time pickers and conflict prevention
-- [ ] Implement search pages with filters (location, sport, etc.)
-- [ ] Add group management pages (create/join groups, like lab5-files)
-- [ ] Responsive design and UI polishing
-- [ ] Integrate API services in `api.js` and `authService.js`
+Coach:
+username: coach_arjun
+password: coach123
 
-### Testing and Validation
-- [ ] Unit tests for models and controllers (e.g., using Jest)
-- [ ] Integration tests for API endpoints
-- [ ] Frontend component tests
-- [ ] End-to-end testing for booking flows
-- [ ] Validate against lab4/lab5 patterns (e.g., session auth, bcrypt)
+Owner:
+username: owner_sneha
+password: owner123
 
-### Deployment and Production
-- [ ] Set up environment variables for production
-- [ ] Dockerize backend and frontend
-- [ ] Configure CORS for production domains
-- [ ] Add rate limiting and security middleware
-- [ ] Database migrations for schema updates
-- [ ] CI/CD pipeline setup
+Owner:
+username: owner_karthik
+password: owner123
+```
 
-### Additional Features (Future)
-- [ ] Real-time notifications (e.g., booking confirmations)
-- [ ] Payment integration for bookings
-- [ ] Mobile app version
-- [ ] Analytics dashboard for owners/coaches
+## Backend Setup
+
+Move into the backend folder and install dependencies:
+
+```bash
+cd backend
+npm install
+```
+
+The backend `.env` is already configured for your local setup:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=anusri
+DB_PASSWORD=
+DB_NAME=sportsync
+PORT=4000
+CLIENT_URL=http://localhost:5173
+SESSION_SECRET=sportsync_dev_secret
+```
+
+If your PostgreSQL user has a password, update `DB_PASSWORD` in [backend/.env](/home/anusri/Desktop/dbms-sportsync/backend/.env).
+
+Start the backend:
+
+```bash
+npm start
+```
+
+Backend runs at `http://localhost:4000`.
+
+## Frontend Setup
+
+In a new terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend runs at `http://localhost:5173`.
+
+## Main Roles and Features
+
+### Players
+
+- search coaches and courts
+- create bookings with conflict checking
+- view and cancel their bookings
+- update their profile
+- create and join groups
+- submit reviews for courts and coaches
+
+### Coaches
+
+- maintain coach profile information
+- add weekly availability slots
+- view booked coaching sessions
+- see player reviews
+
+### Court Owners
+
+- create and edit courts
+- add court availability
+- view bookings made on their courts
+
+## Important Files
+
+- Database schema: [database/DDL.sql](/home/anusri/Desktop/dbms-sportsync/database/DDL.sql)
+- Seed data: [database/Data.sql](/home/anusri/Desktop/dbms-sportsync/database/Data.sql)
+- Sample SQL queries: [database/queries.sql](/home/anusri/Desktop/dbms-sportsync/database/queries.sql)
+- Backend entry: [backend/app.js](/home/anusri/Desktop/dbms-sportsync/backend/app.js)
+- Frontend entry: [frontend/src/App.jsx](/home/anusri/Desktop/dbms-sportsync/frontend/src/App.jsx)
+
+## API Overview
+
+### Auth
+
+- `POST /api/auth/signup`
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `GET /api/auth/session`
+
+### Users
+
+- `GET /api/users/me`
+- `PUT /api/users/me`
+- `GET /api/users/me/overview`
+
+### Courts
+
+- `GET /api/courts`
+- `GET /api/courts/:courtId`
+- `GET /api/courts/owner/mine`
+- `POST /api/courts`
+- `PUT /api/courts/:courtId`
+- `POST /api/courts/:courtId/availability`
+
+### Coaches
+
+- `GET /api/coaches`
+- `GET /api/coaches/:coachId`
+- `GET /api/coaches/me/dashboard`
+- `POST /api/coaches/me/availability`
+
+### Bookings
+
+- `GET /api/bookings/mine`
+- `GET /api/bookings/owner`
+- `GET /api/bookings/coach`
+- `POST /api/bookings`
+- `PATCH /api/bookings/:bookingId/cancel`
+
+### Groups
+
+- `GET /api/groups`
+- `GET /api/groups/mine`
+- `POST /api/groups`
+- `POST /api/groups/:groupId/join`
+
+### Reviews
+
+- `GET /api/reviews`
+- `POST /api/reviews`
+
+## Booking Conflict Logic
+
+The booking logic checks:
+
+- overlapping court bookings
+- overlapping coach bookings
+- overlapping player bookings
+- whether the requested time fits inside the court's weekly availability
+- whether the requested time fits inside the coach's weekly availability if a coach is selected
+
+This logic is implemented in [backend/controllers/bookingController.js](/home/anusri/Desktop/dbms-sportsync/backend/controllers/bookingController.js) and [backend/utils/timeUtils.js](/home/anusri/Desktop/dbms-sportsync/backend/utils/timeUtils.js).
+
+## How To Run Everything
+
+From the project root:
+
+1. Load the schema into `sportsync`.
+2. Seed the database.
+3. Start backend from `backend/`.
+4. Start frontend from `frontend/`.
+5. Open `http://localhost:5173`.
+
+## Notes
+
+- The project is designed as a strong DBMS mini-project / course-project baseline.
+- I have not run `npm install` or a full build inside this environment yet, so install and run locally on your machine after importing the SQL.

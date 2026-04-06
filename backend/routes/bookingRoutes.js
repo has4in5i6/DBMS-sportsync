@@ -1,11 +1,21 @@
 const express = require('express');
-const { createBooking, getBookings, cancelBooking } = require('../controllers/bookingController');
-const authMiddleware = require('../middleware/authMiddleware');
+const auth = require('../middleware/authMiddleware');
+const requireRole = require('../middleware/roleMiddleware');
+const {
+  cancelExistingBooking,
+  createNewBooking,
+  getCoachManagedBookings,
+  getMyBookings,
+  getOwnerManagedBookings,
+} = require('../controllers/bookingController');
+
 const router = express.Router();
 
-router.use(authMiddleware);
-router.post('/', createBooking);
-router.get('/', getBookings);
-router.delete('/:bookingId', cancelBooking);
+router.use(auth);
+router.get('/mine', requireRole('player'), getMyBookings);
+router.get('/owner', requireRole('owner'), getOwnerManagedBookings);
+router.get('/coach', requireRole('coach'), getCoachManagedBookings);
+router.post('/', requireRole('player'), createNewBooking);
+router.patch('/:bookingId/cancel', cancelExistingBooking);
 
 module.exports = router;

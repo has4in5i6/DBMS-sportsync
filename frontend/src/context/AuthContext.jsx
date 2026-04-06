@@ -1,21 +1,46 @@
-import { createContext, useState, useEffect } from 'react';
-import { checkLogin } from '../services/authService'; // TODO: Import once implemented
+import { createContext, useContext, useEffect, useState } from 'react';
+import {
+  fetchSession,
+  login as loginRequest,
+  logout as logoutRequest,
+  signup as signupRequest,
+} from '../services/authService';
 
 export const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // TODO: Check login status on app load
-  // useEffect(() => {
-  //   checkLogin().then(setUser).catch(() => setUser(null));
-  // }, []);
+  useEffect(() => {
+    fetchSession()
+      .then((data) => setUser(data.user))
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
+  }, []);
 
-  // TODO: Add login/logout functions that update state and call services
+  const login = async (credentials) => {
+    const data = await loginRequest(credentials);
+    setUser(data.user);
+    return data.user;
+  };
+
+  const signup = async (payload) => {
+    const data = await signupRequest(payload);
+    setUser(data.user);
+    return data.user;
+  };
+
+  const logout = async () => {
+    await logoutRequest();
+    setUser(null);
+  };
 
   return (
-    <AuthContext.Provider value={{ user, setUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, setUser, signup }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
+
+export const useAuth = () => useContext(AuthContext);

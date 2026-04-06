@@ -1,6 +1,65 @@
-// TODO: Implement signup form with username, email, password fields
-// TODO: Add password confirmation and validation
-// TODO: Integrate with authService for registration
-// TODO: Handle success/error messages and redirect
-const Signup = () => <div>Signup Page</div>;
-export default Signup;
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Button from '../../components/Button';
+import Card from '../../components/Card';
+import Input from '../../components/Input';
+import { useAuth } from '../../context/AuthContext';
+
+const roleOptions = [
+  { value: 'player', label: 'Player' },
+  { value: 'coach', label: 'Coach' },
+  { value: 'owner', label: 'Court Owner' },
+];
+
+export default function Signup() {
+  const navigate = useNavigate();
+  const { signup } = useAuth();
+  const [form, setForm] = useState({
+    fullName: '',
+    username: '',
+    email: '',
+    password: '',
+    role: 'player',
+    primarySport: 'Badminton',
+    skillLevel: 'Beginner',
+    city: 'Hyderabad',
+    bio: '',
+  });
+  const [error, setError] = useState('');
+
+  const handleChange = (event) => {
+    setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError('');
+
+    try {
+      const createdUser = await signup(form);
+      navigate(createdUser.role === 'player' ? '/' : '/onboarding');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  return (
+    <div className="page-shell auth-shell">
+      <Card title="Create your SportSync profile" subtitle="Set up your role and start booking or managing sessions.">
+        <form className="grid-form" onSubmit={handleSubmit}>
+          <Input label="Full name" name="fullName" value={form.fullName} onChange={handleChange} required />
+          <Input label="Username" name="username" value={form.username} onChange={handleChange} required />
+          <Input label="Email" name="email" type="email" value={form.email} onChange={handleChange} required />
+          <Input label="Password" name="password" type="password" value={form.password} onChange={handleChange} required />
+          <Input label="Role" as="select" name="role" value={form.role} onChange={handleChange} options={roleOptions} />
+          <Input label="Primary sport" name="primarySport" value={form.primarySport} onChange={handleChange} required />
+          <Input label="Skill level" name="skillLevel" value={form.skillLevel} onChange={handleChange} required />
+          <Input label="City" name="city" value={form.city} onChange={handleChange} required />
+          <Input label="Bio" as="textarea" name="bio" value={form.bio} onChange={handleChange} rows="4" />
+          {error && <p className="form-error">{error}</p>}
+          <Button type="submit">Create account</Button>
+        </form>
+      </Card>
+    </div>
+  );
+}

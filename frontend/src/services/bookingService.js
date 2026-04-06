@@ -1,9 +1,14 @@
 import { request } from './api';
 
-export const fetchBookings = () => request('/bookings');
-export const createBooking = (booking) => request('/bookings', {
+export const createBooking = (payload) => request('/bookings', {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(booking),
+  body: JSON.stringify(payload),
 });
-export const cancelBooking = (bookingId) => request(`/bookings/${bookingId}`, { method: 'DELETE' });
+
+export const fetchMyBookings = () => request('/bookings/mine');
+export const fetchOwnerBookings = () => request('/bookings/owner');
+export const fetchCoachBookings = () => request('/bookings/coach');
+
+export const cancelBooking = (bookingId) => request(`/bookings/${bookingId}/cancel`, {
+  method: 'PATCH',
+});

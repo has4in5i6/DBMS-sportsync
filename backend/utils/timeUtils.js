@@ -1,11 +1,30 @@
-// TODO: Implement full conflict detection logic
-// TODO: Add time slot generation for available times
-// TODO: Handle time zones and date formatting
+const toMinutes = (value) => {
+  const [hours, minutes] = value.split(':').map(Number);
+  return (hours * 60) + minutes;
+};
 
-exports.hasConflict = (existingBookings, candidate) => {
-  return existingBookings.some((booking) => {
-    return (
-      candidate.startTime < booking.end_time && candidate.endTime > booking.start_time
-    );
-  });
+const overlaps = (startA, endA, startB, endB) => (
+  toMinutes(startA) < toMinutes(endB) && toMinutes(endA) > toMinutes(startB)
+);
+
+const slotContains = (slotStart, slotEnd, candidateStart, candidateEnd) => (
+  toMinutes(slotStart) <= toMinutes(candidateStart)
+  && toMinutes(slotEnd) >= toMinutes(candidateEnd)
+);
+
+const durationInHours = (startTime, endTime) => (
+  (toMinutes(endTime) - toMinutes(startTime)) / 60
+);
+
+const weekdayFromDate = (dateString) => {
+  const day = new Date(`${dateString}T00:00:00`).getDay();
+  return Number.isNaN(day) ? null : day;
+};
+
+module.exports = {
+  durationInHours,
+  overlaps,
+  slotContains,
+  toMinutes,
+  weekdayFromDate,
 };

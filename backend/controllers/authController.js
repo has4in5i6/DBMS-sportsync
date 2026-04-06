@@ -1,82 +1,110 @@
 const bcrypt = require('bcrypt');
-const db = require('../db');
+const {
+  createUser,
+  findUserByEmail,
+  findUserByUsername,
+} = require('../models/userModel');
 
-exports.signup = async (req, res) => {
-  const { username, password, email, name, role } = req.body;
-  // TODO: Add email validation (check format and uniqueness)
-  // TODO: Add password strength requirements
+const buildSessionUser = (user) => ({
+  id: user.id,
+  username: user.username,
+  fullName: user.full_name,
+  role: user.role,
+});
+
+const signup = async (req, res, next) => {
   try {
-    const hash = await bcrypt.hash(password, 10);
+    const {
+      username,
+      email,
+      password,
+      fullName,
+      role = 'player',
+      primarySport,
+      skillLevel,
+      city,
+      bio = '',
+    } = req.body;
 
-    const result = await db.query(
-      `INSERT INTO users (username, password_hash, email, name, role)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, username`,
-      [username, hash, email, name, role || 'player']
-    );
+    if (!username || !email || !password || !fullName) {
+      return res.status(400).json({ message: 'Full name, username, email, and password are required.' });
+    }
 
-    req.session.user = {
-      user_id: result.rows[0].id,
-      username: result.rows[0].username
-    };
+    if (!['player', 'coach', 'owner'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid role selected.' });
+    }
 
-    res.status(201).json({
-      user_id: result.rows[0].id,
-      username: result.rows[0].username
+    const existingUsername = await findUserByUsername(username);
+    if (existingUsername) {
+      return res.status(409).json({ message: 'Username already exists.' });
+    }
+
+    const existingEmail = await findUserByEmail(email);
+    if (existingEmail) {
+      return res.status(409).json({ message: 'Email already exists.' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await createUser({
+      username,
+      email,
+      passwordHash,
+      fullName,
+      role,
+      primarySport,
+      skillLevel,
+      city,
+      bio,
     });
 
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server Error' });
+    req.session.user = buildSessionUser(user);
+    return res.status(201).json({ user: req.session.user });
+  } catch (error) {
+    return next(error);
   }
 };
 
-exports.login = async (req, res) => {
-  const { username, password } = req.body;
-
+const login = async (req, res, next) => {
   try {
-    const result = await db.query(
-      `SELECT id, username, password_hash
-       FROM users
-       WHERE username = $1`,
-      [username]
-    );
+    const { username, password } = req.body;
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'User Not Found' });
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Username and password are required.' });
     }
 
-    const valid = await bcrypt.compare(
-      password,
-      result.rows[0].password_hash
-    );
-
-    if (!valid) {
-      return res.status(401).json({ message: 'Invalid Credentials' });
+    const user = await findUserByUsername(username);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
     }
 
-    req.session.user = {
-      user_id: result.rows[0].id,
-      username: result.rows[0].username
-    };
+    const isValid = await bcrypt.compare(password, user.password_hash);
+    if (!isValid) {
+      return res.status(401).json({ message: 'Invalid username or password.' });
+    }
 
-    res.json({ message: 'Login successful', user: req.session.user });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server Error' });
+    req.session.user = buildSessionUser(user);
+    return res.json({ user: req.session.user });
+  } catch (error) {
+    return next(error);
   }
 };
 
-exports.logout = (req, res) => {
+const logout = (req, res) => {
   req.session.destroy(() => {
-    res.json({ message: 'Logged out' });
+    res.json({ message: 'Logged out successfully.' });
   });
 };
 
-exports.isLoggedIn = (req, res) => {
-  if (req.session.user) {
-    res.json({ loggedIn: true, user: req.session.user });
-  } else {
-    res.json({ loggedIn: false });
-  }
+const getSession = (req, res) => {
+  res.json({
+    loggedIn: Boolean(req.session.user),
+    user: req.session.user || null,
+  });
+};
+
+module.exports = {
+  getSession,
+  login,
+  logout,
+  signup,
 };

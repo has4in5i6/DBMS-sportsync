@@ -1,53 +1,59 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const session = require('express-session');
-const cors = require('cors');
 const dotenv = require('dotenv');
-const authRoutes = require('./routes/authRoutes');
-const userRoutes = require('./routes/userRoutes');
-const bookingRoutes = require('./routes/bookingRoutes');
-const courtRoutes = require('./routes/courtRoutes');
-const coachRoutes = require('./routes/coachRoutes');
-
 dotenv.config();
 
+const express = require('express');
+const cors = require('cors');
+const session = require('express-session');
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const courtRoutes = require('./routes/courtRoutes');
+const coachRoutes = require('./routes/coachRoutes');
+const bookingRoutes = require('./routes/bookingRoutes');
+const groupRoutes = require('./routes/groupRoutes');
+const reviewRoutes = require('./routes/reviewRoutes');
+
 const app = express();
-const port = 4000;
+const port = Number(process.env.PORT || 4000);
 
-// ---------------- MIDDLEWARE ----------------
-app.use(bodyParser.json());
-
+app.use(express.json());
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true,
 }));
 
 app.use(session({
-  secret: 'sportsync_secret',
+  name: 'sportsync.sid',
+  secret: process.env.SESSION_SECRET || 'sportsync_dev_secret',
   resave: false,
   saveUninitialized: false,
-  cookie: { httpOnly: true }
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: false,
+    maxAge: 1000 * 60 * 60 * 24,
+  },
 }));
 
-// ---------------- AUTH MIDDLEWARE ----------------
-function checkAuth(req, res, next) {
-  if (!req.session.user) {
-    return res.status(401).json({ message: 'Unauthorized' });
-  }
-  next();
-}
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/bookings', bookingRoutes);
 app.use('/api/courts', courtRoutes);
 app.use('/api/coaches', coachRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/reviews', reviewRoutes);
 
-// TODO: Add error handling middleware
-// TODO: Add logging middleware
-// TODO: Add rate limiting for API endpoints
-// TODO: Add search routes for courts/coaches
+app.use((err, _req, res, _next) => {
+  console.error(err);
+  const status = err.status || 500;
+  res.status(status).json({
+    message: err.message || 'Internal server error',
+  });
+});
 
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+  console.log(`SportSync backend running on http://localhost:${port}`);
 });
