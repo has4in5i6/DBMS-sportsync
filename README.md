@@ -226,3 +226,33 @@ From the project root:
 
 - The project is designed as a strong DBMS mini-project / course-project baseline.
 - I have not run `npm install` or a full build inside this environment yet, so install and run locally on your machine after importing the SQL.
+
+
+###################################################################
+###################################################################
+
+---------how to run?????-------------:edited by anusri
+
+####################################################################
+
+create a database and go to the sportsync folder and run the following(change username to yours) :
+psql -U anusri -d sportsync -f database/DDL.sql
+psql -U anusri -d sportsync -f database/Data.sql
+
+then enter details in .env file in backend folder.
+
+to start backend: 
+in terminal 1, run the following:
+
+cd /home/anusri/Desktop/dbms-sportsync/backend
+npm install
+npm start
+
+to start frontend:
+in terminal 2, run the following:
+
+cd /home/anusri/Desktop/dbms-sportsync/frontend
+npm install
+npm run dev
+
+###################################################################
