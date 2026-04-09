@@ -5,8 +5,8 @@ import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { useAuth } from '../../context/AuthContext';
 import { createGroup, fetchGroups, fetchMyGroups, joinGroup } from '../../services/groupService';
-import { fetchCoaches, fetchCourts } from '../../services/searchService';
-import { buildQuery } from '../../utils/helpers';
+import { fetchCoachById, fetchCoaches, fetchCourtById, fetchCourts } from '../../services/searchService';
+import { buildQuery, formatTime } from '../../utils/helpers';
 
 const skillLevelOptions = [
   { value: '', label: 'Any level' },
@@ -14,6 +14,17 @@ const skillLevelOptions = [
   { value: 'Moderate', label: 'Moderate' },
   { value: 'Advanced', label: 'Advanced' },
 ];
+
+const weekdayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const buildBookingLink = (params) => {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== '' && value !== null && value !== undefined) {
+      searchParams.set(key, String(value));
+    }
+  });
+  return `/booking?${searchParams.toString()}`;
+};
 
 export default function Search() {
   const { user } = useAuth();
@@ -25,6 +36,10 @@ export default function Search() {
   const [myGroups, setMyGroups] = useState([]);
   const [groupMessage, setGroupMessage] = useState('');
   const [error, setError] = useState('');
+  const [expandedCourtId, setExpandedCourtId] = useState(null);
+  const [expandedCoachId, setExpandedCoachId] = useState(null);
+  const [courtAvailability, setCourtAvailability] = useState({});
+  const [coachAvailability, setCoachAvailability] = useState({});
   const [groupForm, setGroupForm] = useState({
     name: '',
     sportType: user?.primarySport || 'Badminton',
@@ -101,6 +116,53 @@ export default function Search() {
     }
   };
 
+  const groupSlotsByWeekday = (slots = []) => slots.reduce((accumulator, slot) => {
+    const weekday = slot.weekday;
+    accumulator[weekday] ||= [];
+    accumulator[weekday].push(slot);
+    return accumulator;
+  }, {});
+
+  const toggleCourtAvailability = async (courtId) => {
+    if (expandedCourtId === courtId) {
+      setExpandedCourtId(null);
+      return;
+    }
+
+    setExpandedCourtId(courtId);
+    if (courtAvailability[courtId]) {
+      return;
+    }
+
+    try {
+      setError('');
+      const data = await fetchCourtById(courtId);
+      setCourtAvailability((current) => ({ ...current, [courtId]: data.availability || [] }));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const toggleCoachAvailability = async (coachId) => {
+    if (expandedCoachId === coachId) {
+      setExpandedCoachId(null);
+      return;
+    }
+
+    setExpandedCoachId(coachId);
+    if (coachAvailability[coachId]) {
+      return;
+    }
+
+    try {
+      setError('');
+      const data = await fetchCoachById(coachId);
+      setCoachAvailability((current) => ({ ...current, [coachId]: data.availability || [] }));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   return (
     <div className="page-shell search-shell">
       <div className="dashboard-grid">
@@ -114,9 +176,39 @@ export default function Search() {
           <div className="results-scroll">
             {courts.map((court) => (
               <div className="list-item" key={court.id}>
-                <strong>{court.name}</strong>
-                <span>{court.sport_type} • {court.location}</span>
-                <span>Rs. {court.price_per_hour}/hr • Rating {court.average_rating}</span>
+                <button className="availability-toggle" type="button" onClick={() => toggleCourtAvailability(court.id)}>
+                  <strong>{court.name}</strong>
+                  <span>{court.sport_type} • {court.location}</span>
+                  <span>Rs. {court.price_per_hour}/hr • Rating {court.average_rating}</span>
+                  <small className="availability-hint">{expandedCourtId === court.id ? 'Hide available weekly slots' : 'Show available weekly slots'}</small>
+                </button>
+                {expandedCourtId === court.id && (
+                  <div className="availability-panel">
+                    {Object.entries(groupSlotsByWeekday(courtAvailability[court.id] || [])).map(([weekday, slots]) => (
+                      <div className="availability-day" key={weekday}>
+                        <strong>{weekdayLabels[Number(weekday)]}</strong>
+                        <div className="slot-row">
+                          {slots.map((slot) => (
+                            <Link
+                              className="slot-chip"
+                              key={`${slot.weekday}-${slot.start_time}-${slot.end_time}`}
+                              to={buildBookingLink({
+                                courtId: court.id,
+                                sportType: court.sport_type,
+                                weekday: slot.weekday,
+                                startTime: formatTime(slot.start_time),
+                                endTime: formatTime(slot.end_time),
+                              })}
+                            >
+                              {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {(courtAvailability[court.id] || []).length === 0 && <p>No available weekly court slots added yet.</p>}
+                  </div>
+                )}
               </div>
             ))}
             {courts.length === 0 && <p>No courts match your filters.</p>}
@@ -140,9 +232,39 @@ export default function Search() {
           <div className="results-scroll">
             {coaches.map((coach) => (
               <div className="list-item" key={coach.id}>
-                <strong>{coach.full_name}</strong>
-                <span>{coach.primary_sport} • {coach.city} • {coach.experience_years} years experience</span>
-                <span>Rs. {coach.hourly_rate}/hr • Rating {coach.average_rating}</span>
+                <button className="availability-toggle" type="button" onClick={() => toggleCoachAvailability(coach.id)}>
+                  <strong>{coach.full_name}</strong>
+                  <span>{coach.primary_sport} • {coach.city} • {coach.experience_years} years experience</span>
+                  <span>Rs. {coach.hourly_rate}/hr • Rating {coach.average_rating}</span>
+                  <small className="availability-hint">{expandedCoachId === coach.id ? 'Hide available weekly slots' : 'Show available weekly slots'}</small>
+                </button>
+                {expandedCoachId === coach.id && (
+                  <div className="availability-panel">
+                    {Object.entries(groupSlotsByWeekday(coachAvailability[coach.id] || [])).map(([weekday, slots]) => (
+                      <div className="availability-day" key={weekday}>
+                        <strong>{weekdayLabels[Number(weekday)]}</strong>
+                        <div className="slot-row">
+                          {slots.map((slot) => (
+                            <Link
+                              className="slot-chip"
+                              key={`${slot.weekday}-${slot.start_time}-${slot.end_time}`}
+                              to={buildBookingLink({
+                                coachId: coach.id,
+                                sportType: coach.primary_sport,
+                                weekday: slot.weekday,
+                                startTime: formatTime(slot.start_time),
+                                endTime: formatTime(slot.end_time),
+                              })}
+                            >
+                              {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {(coachAvailability[coach.id] || []).length === 0 && <p>No available weekly coach slots added yet.</p>}
+                  </div>
+                )}
               </div>
             ))}
             {coaches.length === 0 && <p>No coaches match your filters.</p>}

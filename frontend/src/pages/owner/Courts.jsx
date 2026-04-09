@@ -7,8 +7,20 @@ import {
   createCourt,
   deleteCourt,
   fetchOwnerCourts,
+  removeCourtAvailability,
   updateCourt,
 } from '../../services/courtService';
+import { fetchCourtById } from '../../services/searchService';
+
+const weekdayOptions = [
+  { value: '0', label: 'Sunday' },
+  { value: '1', label: 'Monday' },
+  { value: '2', label: 'Tuesday' },
+  { value: '3', label: 'Wednesday' },
+  { value: '4', label: 'Thursday' },
+  { value: '5', label: 'Friday' },
+  { value: '6', label: 'Saturday' },
+];
 
 export default function Courts() {
   const [courts, setCourts] = useState([]);
@@ -24,6 +36,7 @@ export default function Courts() {
     isActive: true,
   });
   const [availabilityForm, setAvailabilityForm] = useState({ weekday: 1, startTime: '18:00', endTime: '20:00' });
+  const [selectedCourtAvailability, setSelectedCourtAvailability] = useState([]);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const selectedCourt = courts.find((court) => String(court.id) === selectedCourtId) || null;
@@ -41,6 +54,24 @@ export default function Courts() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    const loadSelectedCourtAvailability = async () => {
+      if (!selectedCourtId) {
+        setSelectedCourtAvailability([]);
+        return;
+      }
+
+      try {
+        const data = await fetchCourtById(selectedCourtId);
+        setSelectedCourtAvailability(data.availability || []);
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+
+    loadSelectedCourtAvailability();
+  }, [selectedCourtId]);
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
@@ -77,14 +108,20 @@ export default function Courts() {
         });
         setMessage('Court updated successfully.');
       } else {
-        await createCourt({
+        const createdCourt = await createCourt({
           ...form,
           pricePerHour: Number(form.pricePerHour),
           capacity: Number(form.capacity),
         });
-        setMessage('Court added successfully.');
+        await addCourtAvailability(createdCourt.court.id, {
+          weekday: Number(availabilityForm.weekday),
+          startTime: availabilityForm.startTime,
+          endTime: availabilityForm.endTime,
+        });
+        setMessage('Court added with its first availability slot.');
       }
       setSelectedCourtId('');
+      setSelectedCourtAvailability([]);
       setForm({
         name: '',
         sportType: 'Badminton',
@@ -108,6 +145,7 @@ export default function Courts() {
       await deleteCourt(courtId);
       if (selectedCourtId === String(courtId)) {
         setSelectedCourtId('');
+        setSelectedCourtAvailability([]);
         setForm({
           name: '',
           sportType: 'Badminton',
@@ -141,6 +179,23 @@ export default function Courts() {
         endTime: availabilityForm.endTime,
       });
       setMessage('Availability added.');
+      const data = await fetchCourtById(selectedCourtId);
+      setSelectedCourtAvailability(data.availability || []);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleRemoveAvailability = async (availabilityId) => {
+    if (!selectedCourtId) {
+      return;
+    }
+
+    try {
+      setError('');
+      await removeCourtAvailability(Number(selectedCourtId), availabilityId);
+      setMessage('Availability removed.');
+      setSelectedCourtAvailability((current) => current.filter((slot) => slot.id !== availabilityId));
     } catch (err) {
       setError(err.message);
     }
@@ -191,11 +246,22 @@ export default function Courts() {
               value={selectedCourt ? selectedCourt.name : 'Select a court from Your courts first'}
               readOnly
             />
-            <Input label="Weekday (0-6)" type="number" name="weekday" value={availabilityForm.weekday} onChange={handleAvailabilityChange} />
+            <Input label="Weekday" as="select" name="weekday" value={availabilityForm.weekday} onChange={handleAvailabilityChange} options={weekdayOptions} />
             <Input label="Start time" type="time" name="startTime" value={availabilityForm.startTime} onChange={handleAvailabilityChange} />
             <Input label="End time" type="time" name="endTime" value={availabilityForm.endTime} onChange={handleAvailabilityChange} />
             <Button type="submit">Add availability</Button>
           </form>
+          {selectedCourtAvailability.length > 0 && (
+            <div className="stack">
+              {selectedCourtAvailability.map((slot) => (
+                <div className="list-item" key={slot.id}>
+                  <strong>{weekdayOptions.find((option) => option.value === String(slot.weekday))?.label || slot.weekday}</strong>
+                  <span>{slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}</span>
+                  <Button variant="secondary" onClick={() => handleRemoveAvailability(slot.id)}>Remove slot</Button>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
     </div>

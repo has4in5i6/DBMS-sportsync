@@ -5,6 +5,7 @@ export const createBooking = (payload) => request('/bookings', {
   body: JSON.stringify(payload),
 });
 
+export const fetchBookingAvailability = (query = '') => request(`/bookings/availability${query}`);
 export const fetchMyBookings = () => request('/bookings/mine');
 export const fetchOwnerBookings = () => request('/bookings/owner');
 export const fetchCoachBookings = () => request('/bookings/coach');

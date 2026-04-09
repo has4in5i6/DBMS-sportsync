@@ -20,3 +20,7 @@ export const addCourtAvailability = (courtId, payload) => request(`/courts/${cou
   method: 'POST',
   body: JSON.stringify(payload),
 });
+
+export const removeCourtAvailability = (courtId, availabilityId) => request(`/courts/${courtId}/availability/${availabilityId}`, {
+  method: 'DELETE',
+});

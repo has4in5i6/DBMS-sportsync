@@ -460,6 +460,54 @@ textarea {
   padding-right: 0.25rem;
 }
 
+.availability-toggle {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.availability-hint {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.availability-panel {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.7rem;
+  padding: 0.85rem;
+  border-radius: 18px;
+  background: rgba(76, 168, 222, 0.08);
+}
+
+.availability-day {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.slot-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.slot-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(117, 214, 164, 0.18);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .selection-card {
   display: grid;
   gap: 0.35rem;
@@ -500,3 +548,4 @@ textarea {
     font-size: 1.5rem;
   }
 }
+
