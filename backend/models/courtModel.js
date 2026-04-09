@@ -173,9 +173,25 @@ const addCourtAvailability = async (courtId, slot) => {
   return result.rows[0];
 };
 
+const deleteCourtAvailability = async (ownerId, courtId, availabilityId) => {
+  const result = await db.query(
+    `DELETE FROM court_availability ca
+     USING courts c
+     WHERE ca.id = $1
+       AND ca.court_id = $2
+       AND c.id = ca.court_id
+       AND c.owner_id = $3
+     RETURNING ca.*`,
+    [availabilityId, courtId, ownerId],
+  );
+
+  return result.rows[0] || null;
+};
+
 module.exports = {
   addCourtAvailability,
   createCourt,
+  deleteCourtAvailability,
   deleteCourt,
   getCourtAvailability,
   getCourtById,

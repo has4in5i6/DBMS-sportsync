@@ -1,6 +1,7 @@
 const {
   addCourtAvailability,
   createCourt,
+  deleteCourtAvailability,
   deleteCourt,
   getCourtAvailability,
   getCourtById,
@@ -90,9 +91,28 @@ const deleteMyCourt = async (req, res, next) => {
   }
 };
 
+const deleteMyCourtAvailability = async (req, res, next) => {
+  try {
+    const availability = await deleteCourtAvailability(
+      req.session.user.id,
+      req.params.courtId,
+      req.params.availabilityId,
+    );
+
+    if (!availability) {
+      return res.status(404).json({ message: 'Availability slot not found or not owned by you.' });
+    }
+
+    return res.json({ availability, message: 'Availability slot removed successfully.' });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   addMyCourtAvailability,
   createMyCourt,
+  deleteMyCourtAvailability,
   deleteMyCourt,
   getCourt,
   getMyCourts,
