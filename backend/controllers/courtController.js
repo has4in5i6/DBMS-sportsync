@@ -1,6 +1,7 @@
 const {
   addCourtAvailability,
   createCourt,
+  deleteCourt,
   getCourtAvailability,
   getCourtById,
   listOwnerCourts,
@@ -76,9 +77,23 @@ const addMyCourtAvailability = async (req, res, next) => {
   }
 };
 
+const deleteMyCourt = async (req, res, next) => {
+  try {
+    const court = await deleteCourt(req.session.user.id, req.params.courtId);
+    if (!court) {
+      return res.status(404).json({ message: 'Court not found or not owned by you.' });
+    }
+
+    return res.json({ court, message: 'Court deleted successfully.' });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   addMyCourtAvailability,
   createMyCourt,
+  deleteMyCourt,
   getCourt,
   getMyCourts,
   listCourts,

@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import Input from '../../components/Input';
 import { useAuth } from '../../context/AuthContext';
-import { createGroup, fetchGroups, fetchMyGroups, joinGroup } from '../../services/groupService';
 import { createReview } from '../../services/reviewService';
 import { fetchCoaches, fetchCourts } from '../../services/searchService';
 import { fetchMe, updateMe } from '../../services/userService';
@@ -12,20 +10,10 @@ import { fetchMe, updateMe } from '../../services/userService';
 export default function Profile() {
   const { user, setUser } = useAuth();
   const [profile, setProfile] = useState(null);
-  const [groups, setGroups] = useState([]);
-  const [myGroups, setMyGroups] = useState([]);
   const [courts, setCourts] = useState([]);
   const [coaches, setCoaches] = useState([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [groupForm, setGroupForm] = useState({
-    name: '',
-    sportType: user?.primarySport || 'Badminton',
-    city: 'Hyderabad',
-    skillLevel: 'Beginner',
-    description: '',
-    maxMembers: 8,
-  });
   const [reviewForm, setReviewForm] = useState({
     reviewType: 'coach',
     targetId: '',
@@ -35,17 +23,13 @@ export default function Profile() {
 
   const loadPage = async () => {
     try {
-      const [profileData, allGroups, joinedGroups, courtData, coachData] = await Promise.all([
+      const [profileData, courtData, coachData] = await Promise.all([
         fetchMe(),
-        fetchGroups(),
-        user.role === 'player' ? fetchMyGroups() : Promise.resolve({ groups: [] }),
         fetchCourts(),
         fetchCoaches(),
       ]);
 
       setProfile(profileData.user);
-      setGroups(allGroups.groups);
-      setMyGroups(joinedGroups.groups);
       setCourts(courtData.courts);
       setCoaches(coachData.coaches);
     } catch (err) {
@@ -84,23 +68,8 @@ export default function Profile() {
     }
   };
 
-  const handleGroupChange = (event) => {
-    setGroupForm((current) => ({ ...current, [event.target.name]: event.target.value }));
-  };
-
   const handleReviewChange = (event) => {
     setReviewForm((current) => ({ ...current, [event.target.name]: event.target.value }));
-  };
-
-  const submitGroup = async (event) => {
-    event.preventDefault();
-    try {
-      await createGroup({ ...groupForm, maxMembers: Number(groupForm.maxMembers) });
-      setMessage('Group created successfully.');
-      loadPage();
-    } catch (err) {
-      setError(err.message);
-    }
   };
 
   const submitReview = async (event) => {
@@ -149,47 +118,6 @@ export default function Profile() {
             <Button type="submit">Save profile</Button>
           </form>
         </Card>
-
-        {user.role === 'player' && (
-          <>
-            <Card title="Create or join groups" subtitle="Build recurring play circles with other players.">
-              <form className="grid-form" onSubmit={submitGroup}>
-                <Input label="Group name" name="name" value={groupForm.name} onChange={handleGroupChange} required />
-                <Input label="Sport" name="sportType" value={groupForm.sportType} onChange={handleGroupChange} required />
-                <Input label="City" name="city" value={groupForm.city} onChange={handleGroupChange} required />
-                <Input label="Skill level" name="skillLevel" value={groupForm.skillLevel} onChange={handleGroupChange} required />
-                <Input label="Max members" type="number" name="maxMembers" value={groupForm.maxMembers} onChange={handleGroupChange} required />
-                <Input label="Description" as="textarea" name="description" value={groupForm.description} onChange={handleGroupChange} rows="3" />
-                <Button type="submit">Create group</Button>
-              </form>
-              <div className="stack">
-                {groups.map((group) => (
-                  <div className="list-item" key={group.id}>
-                    <strong>{group.name}</strong>
-                    <span>{group.sport_type} • {group.city} • {group.member_count}/{group.max_members}</span>
-                    <div className="inline-actions">
-                      <Link className="text-link" to={`/groups/${group.id}`}>Open group</Link>
-                      <Button variant="ghost" onClick={() => joinGroup(group.id).then(loadPage).catch((err) => setError(err.message))}>
-                        Join
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card title="My groups" subtitle="Communities you are already part of.">
-              {myGroups.length === 0 && <p>No group memberships yet.</p>}
-              {myGroups.map((group) => (
-                <div className="list-item" key={group.id}>
-                  <strong>{group.name}</strong>
-                  <span>{group.sport_type} • {group.city} • {group.member_count} members</span>
-                  <Link className="text-link" to={`/groups/${group.id}`}>Open group</Link>
-                </div>
-              ))}
-            </Card>
-          </>
-        )}
 
         <Card title="Leave a review" subtitle="Rate a coach or court after your session.">
           <form className="grid-form" onSubmit={submitReview}>

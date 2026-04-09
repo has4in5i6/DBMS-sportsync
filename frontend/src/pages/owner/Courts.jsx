@@ -5,6 +5,7 @@ import Input from '../../components/Input';
 import {
   addCourtAvailability,
   createCourt,
+  deleteCourt,
   fetchOwnerCourts,
   updateCourt,
 } from '../../services/courtService';
@@ -25,9 +26,11 @@ export default function Courts() {
   const [availabilityForm, setAvailabilityForm] = useState({ weekday: 1, startTime: '18:00', endTime: '20:00' });
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const selectedCourt = courts.find((court) => String(court.id) === selectedCourtId) || null;
 
   const load = async () => {
     try {
+      setError('');
       const response = await fetchOwnerCourts();
       setCourts(response.courts);
     } catch (err) {
@@ -65,6 +68,7 @@ export default function Courts() {
   const saveCourt = async (event) => {
     event.preventDefault();
     try {
+      setError('');
       if (selectedCourtId) {
         await updateCourt(Number(selectedCourtId), {
           ...form,
@@ -78,7 +82,7 @@ export default function Courts() {
           pricePerHour: Number(form.pricePerHour),
           capacity: Number(form.capacity),
         });
-        setMessage('Court created successfully.');
+        setMessage('Court added successfully.');
       }
       setSelectedCourtId('');
       setForm({
@@ -97,6 +101,31 @@ export default function Courts() {
     }
   };
 
+  const handleDeleteCourt = async (courtId) => {
+    try {
+      setError('');
+      setMessage('');
+      await deleteCourt(courtId);
+      if (selectedCourtId === String(courtId)) {
+        setSelectedCourtId('');
+        setForm({
+          name: '',
+          sportType: 'Badminton',
+          location: 'Hyderabad',
+          surface: 'Synthetic',
+          pricePerHour: 500,
+          capacity: 4,
+          description: '',
+          isActive: true,
+        });
+      }
+      setMessage('Court deleted successfully.');
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const submitAvailability = async (event) => {
     event.preventDefault();
     if (!selectedCourtId) {
@@ -105,6 +134,7 @@ export default function Courts() {
     }
 
     try {
+      setError('');
       await addCourtAvailability(Number(selectedCourtId), {
         weekday: Number(availabilityForm.weekday),
         startTime: availabilityForm.startTime,
@@ -144,7 +174,10 @@ export default function Courts() {
               <strong>{court.name}</strong>
               <span>{court.sport_type} • {court.location}</span>
               <span>Rs. {court.price_per_hour}/hr • {court.is_active ? 'Active' : 'Inactive'}</span>
-              <Button variant="ghost" onClick={() => editCourt(court)}>Edit</Button>
+              <div className="inline-actions">
+                <Button variant="ghost" onClick={() => editCourt(court)}>Edit</Button>
+                <Button variant="secondary" onClick={() => handleDeleteCourt(court.id)}>Delete</Button>
+              </div>
             </div>
           ))}
           {courts.length === 0 && <p>No courts added yet.</p>}
@@ -152,7 +185,12 @@ export default function Courts() {
 
         <Card title="Add court availability" subtitle="Attach weekly operating hours to the selected court.">
           <form className="grid-form" onSubmit={submitAvailability}>
-            <Input label="Selected court ID" name="selectedCourtDisplay" value={selectedCourtId} readOnly />
+            <Input
+              label="Selected court"
+              name="selectedCourtDisplay"
+              value={selectedCourt ? selectedCourt.name : 'Select a court from Your courts first'}
+              readOnly
+            />
             <Input label="Weekday (0-6)" type="number" name="weekday" value={availabilityForm.weekday} onChange={handleAvailabilityChange} />
             <Input label="Start time" type="time" name="startTime" value={availabilityForm.startTime} onChange={handleAvailabilityChange} />
             <Input label="End time" type="time" name="endTime" value={availabilityForm.endTime} onChange={handleAvailabilityChange} />

@@ -22,14 +22,14 @@ export default function Home() {
   }, [user]);
 
   return (
-    <div className="page-shell">
+    <div className="page-shell home-shell">
       <section className="hero">
         <div>
-          <p className="eyebrow">Sports matchmaking and booking platform</p>
-          <h1>Find courts, discover coaches, book sessions, and build your sports community.</h1>
+          <p className="eyebrow">Train harder. Book faster. Play together.</p>
+          <h1>Build your next match day with courts, coaches, and your sports crew in one place.</h1>
           <p className="hero-copy">
-            SportSync brings players, coaches, and court owners into one scheduling system with search,
-            booking, availability management, reviews, and player groups.
+            SportSync is built for active players and busy venues: scout the right court, line up a coach,
+            reserve conflict-free sessions, and keep your local sports circle moving every week.
           </p>
           <div className="hero-actions">
             <Link className="cta-link primary" to="/search">Explore coaches and courts</Link>
@@ -38,16 +38,16 @@ export default function Home() {
         </div>
         <div className="hero-panel">
           <div className="metric">
-            <span>Search</span>
-            <strong>Coaches + courts</strong>
+            <span>Matchday setup</span>
+            <strong>Courts, coaches, and crews</strong>
           </div>
           <div className="metric">
-            <span>Book</span>
-            <strong>Conflict-safe slots</strong>
+            <span>Fast booking</span>
+            <strong>Live court selection</strong>
           </div>
           <div className="metric">
-            <span>Coordinate</span>
-            <strong>Groups and reviews</strong>
+            <span>Stay in rhythm</span>
+            <strong>Groups, reviews, and schedules</strong>
           </div>
         </div>
       </section>
@@ -84,6 +84,7 @@ export default function Home() {
                 <div className="list-item" key={group.id}>
                   <strong>{group.name}</strong>
                   <span>{group.sport_type} • {group.city} • {group.member_count} members</span>
+                  <Link className="text-link" to={`/groups/${group.id}`}>Open group</Link>
                 </div>
               ))}
             </Card>

@@ -1,6 +1,6 @@
-export default function Card({ title, subtitle, actions, children }) {
+export default function Card({ title, subtitle, actions, children, className = '' }) {
   return (
-    <section className="card">
+    <section className={`card ${className}`.trim()}>
       {(title || subtitle || actions) && (
         <div className="card-header">
           <div>

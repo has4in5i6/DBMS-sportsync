@@ -12,6 +12,10 @@ export const updateCourt = (courtId, payload) => request(`/courts/${courtId}`, {
   body: JSON.stringify(payload),
 });
 
+export const deleteCourt = (courtId) => request(`/courts/${courtId}`, {
+  method: 'DELETE',
+});
+
 export const addCourtAvailability = (courtId, payload) => request(`/courts/${courtId}/availability`, {
   method: 'POST',
   body: JSON.stringify(payload),

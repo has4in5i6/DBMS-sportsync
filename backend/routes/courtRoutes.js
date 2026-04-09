@@ -4,6 +4,7 @@ const requireRole = require('../middleware/roleMiddleware');
 const {
   addMyCourtAvailability,
   createMyCourt,
+  deleteMyCourt,
   getCourt,
   getMyCourts,
   listCourts,
@@ -16,6 +17,7 @@ router.get('/', listCourts);
 router.get('/owner/mine', auth, requireRole('owner'), getMyCourts);
 router.post('/', auth, requireRole('owner'), createMyCourt);
 router.put('/:courtId', auth, requireRole('owner'), updateMyCourt);
+router.delete('/:courtId', auth, requireRole('owner'), deleteMyCourt);
 router.get('/:courtId', getCourt);
 router.post('/:courtId/availability', auth, requireRole('owner'), addMyCourtAvailability);
 

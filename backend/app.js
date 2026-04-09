@@ -14,10 +14,21 @@ const reviewRoutes = require('./routes/reviewRoutes');
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
+const host = process.env.HOST || '0.0.0.0';
+const allowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 app.use(express.json());
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Origin ${origin} is not allowed by CORS.`));
+  },
   credentials: true,
 }));
 
@@ -54,6 +65,6 @@ app.use((err, _req, res, _next) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`SportSync backend running on http://localhost:${port}`);
+app.listen(port, host, () => {
+  console.log(`SportSync backend running on http://${host}:${port}`);
 });
