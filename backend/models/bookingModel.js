@@ -111,6 +111,38 @@ const getCoachBookings = async (coachId) => {
   return result.rows;
 };
 
+const getCourtBookingsForDate = async (courtId, bookingDate) => {
+  const result = await db.query(
+    `SELECT start_time, end_time
+     FROM bookings
+     WHERE court_id = $1
+       AND booking_date = $2
+       AND status = 'confirmed'
+     ORDER BY start_time ASC`,
+    [courtId, bookingDate],
+  );
+
+  return result.rows;
+};
+
+const getCoachBookingsForDate = async (bookingDate, coachIds) => {
+  if (!coachIds.length) {
+    return [];
+  }
+
+  const result = await db.query(
+    `SELECT coach_id, start_time, end_time
+     FROM bookings
+     WHERE booking_date = $1
+       AND status = 'confirmed'
+       AND coach_id = ANY($2::int[])
+     ORDER BY coach_id ASC, start_time ASC`,
+    [bookingDate, coachIds],
+  );
+
+  return result.rows;
+};
+
 const cancelBooking = async (bookingId, userId, role) => {
   let query = `
     UPDATE bookings
@@ -133,7 +165,9 @@ const cancelBooking = async (bookingId, userId, role) => {
 module.exports = {
   cancelBooking,
   createBooking,
+  getCoachBookingsForDate,
   getCoachBookings,
+  getCourtBookingsForDate,
   getOwnerBookings,
   getPlayerBookings,
   listConflictingBookings,

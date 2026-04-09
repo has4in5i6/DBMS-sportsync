@@ -122,6 +122,37 @@ const updateCourt = async (ownerId, courtId, court) => {
   return result.rows[0] || null;
 };
 
+const deleteCourt = async (ownerId, courtId) => {
+  const client = await db.connect();
+
+  try {
+    await client.query('BEGIN');
+    const ownedCourt = await client.query(
+      'SELECT id FROM courts WHERE id = $1 AND owner_id = $2',
+      [courtId, ownerId],
+    );
+
+    if (!ownedCourt.rows[0]) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    await client.query('DELETE FROM court_availability WHERE court_id = $1', [courtId]);
+    await client.query('DELETE FROM bookings WHERE court_id = $1', [courtId]);
+    const result = await client.query(
+      'DELETE FROM courts WHERE id = $1 AND owner_id = $2 RETURNING *',
+      [courtId, ownerId],
+    );
+    await client.query('COMMIT');
+    return result.rows[0] || null;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 const getCourtAvailability = async (courtId) => {
   const result = await db.query(
     `SELECT * FROM court_availability
@@ -142,9 +173,26 @@ const addCourtAvailability = async (courtId, slot) => {
   return result.rows[0];
 };
 
+const deleteCourtAvailability = async (ownerId, courtId, availabilityId) => {
+  const result = await db.query(
+    `DELETE FROM court_availability ca
+     USING courts c
+     WHERE ca.id = $1
+       AND ca.court_id = $2
+       AND c.id = ca.court_id
+       AND c.owner_id = $3
+     RETURNING ca.*`,
+    [availabilityId, courtId, ownerId],
+  );
+
+  return result.rows[0] || null;
+};
+
 module.exports = {
   addCourtAvailability,
   createCourt,
+  deleteCourtAvailability,
+  deleteCourt,
   getCourtAvailability,
   getCourtById,
   listOwnerCourts,

@@ -8,6 +8,16 @@ import { addCoachAvailability } from '../../services/coachService';
 import { addCourtAvailability, createCourt, fetchOwnerCourts } from '../../services/courtService';
 import { fetchMe, updateMe } from '../../services/userService';
 
+const weekdayOptions = [
+  { value: '0', label: 'Sunday' },
+  { value: '1', label: 'Monday' },
+  { value: '2', label: 'Tuesday' },
+  { value: '3', label: 'Wednesday' },
+  { value: '4', label: 'Thursday' },
+  { value: '5', label: 'Friday' },
+  { value: '6', label: 'Saturday' },
+];
+
 export default function Onboarding() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -146,7 +156,7 @@ export default function Onboarding() {
             <Input label="Experience in years" type="number" name="experienceYears" value={coachForm.experienceYears} onChange={handleCoachChange} required />
             <Input label="Hourly rate" type="number" name="hourlyRate" value={coachForm.hourlyRate} onChange={handleCoachChange} required />
             <Input label="Coaching history" as="textarea" name="coachingHistory" value={coachForm.coachingHistory} onChange={handleCoachChange} rows="4" />
-            <Input label="First slot weekday (0-6)" type="number" min="0" max="6" name="weekday" value={coachForm.weekday} onChange={handleCoachChange} required />
+            <Input label="First slot weekday" as="select" name="weekday" value={coachForm.weekday} onChange={handleCoachChange} options={weekdayOptions} required />
             <Input label="Start time" type="time" name="startTime" value={coachForm.startTime} onChange={handleCoachChange} required />
             <Input label="End time" type="time" name="endTime" value={coachForm.endTime} onChange={handleCoachChange} required />
             {message && <p className="form-success">{message}</p>}
@@ -169,7 +179,7 @@ export default function Onboarding() {
             <Input label="Price per hour" type="number" name="pricePerHour" value={ownerForm.pricePerHour} onChange={handleOwnerChange} required />
             <Input label="Capacity" type="number" name="capacity" value={ownerForm.capacity} onChange={handleOwnerChange} required />
             <Input label="Description" as="textarea" name="description" value={ownerForm.description} onChange={handleOwnerChange} rows="3" />
-            <Input label="First slot weekday (0-6)" type="number" min="0" max="6" name="weekday" value={ownerForm.weekday} onChange={handleOwnerChange} required />
+            <Input label="First slot weekday" as="select" name="weekday" value={ownerForm.weekday} onChange={handleOwnerChange} options={weekdayOptions} required />
             <Input label="Start time" type="time" name="startTime" value={ownerForm.startTime} onChange={handleOwnerChange} required />
             <Input label="End time" type="time" name="endTime" value={ownerForm.endTime} onChange={handleOwnerChange} required />
             {message && <p className="form-success">{message}</p>}

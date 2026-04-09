@@ -1,20 +1,68 @@
-const { getCoachAvailability, getCoachById } = require('../models/coachModel');
+const { getCoachAvailability, getCoachById, searchCoaches } = require('../models/coachModel');
 const { getCourtAvailability, getCourtById } = require('../models/courtModel');
 const {
   cancelBooking,
   createBooking,
+  getCoachBookingsForDate,
   getCoachBookings,
+  getCourtBookingsForDate,
   getOwnerBookings,
   getPlayerBookings,
   listConflictingBookings,
 } = require('../models/bookingModel');
-const { durationInHours, slotContains, toMinutes, weekdayFromDate } = require('../utils/timeUtils');
+const {
+  durationInHours,
+  minutesToTime,
+  overlaps,
+  toMinutes,
+  weekdayFromDate,
+} = require('../utils/timeUtils');
+
+const formatSlot = (slot) => ({
+  weekday: slot.weekday,
+  startTime: slot.start_time.slice(0, 5),
+  endTime: slot.end_time.slice(0, 5),
+});
+
+const buildBookableSlots = (availabilityRows, bookingRows, weekday) => {
+  const generatedSlots = [];
+
+  availabilityRows
+    .filter((slot) => slot.weekday === weekday)
+    .forEach((slot) => {
+      const startMinutes = toMinutes(slot.start_time);
+      const endMinutes = toMinutes(slot.end_time);
+
+      // Generate one-hour slots every 30 minutes so coach and court windows can intersect cleanly.
+      for (let cursor = startMinutes; cursor + 60 <= endMinutes; cursor += 30) {
+        const slotStart = minutesToTime(cursor);
+        const slotEnd = minutesToTime(cursor + 60);
+        const hasConflict = bookingRows.some((booking) => (
+          overlaps(slotStart, slotEnd, booking.start_time, booking.end_time)
+        ));
+
+        if (!hasConflict) {
+          generatedSlots.push({
+            weekday,
+            startTime: slotStart,
+            endTime: slotEnd,
+          });
+        }
+      }
+    });
+
+  return generatedSlots;
+};
 
 const validateAvailability = async ({ bookingDate, startTime, endTime, courtId, coachId }) => {
   const weekday = weekdayFromDate(bookingDate);
-  const courtSlots = await getCourtAvailability(courtId);
-  const matchingCourtSlot = courtSlots.find((slot) => (
-    slot.weekday === weekday && slotContains(slot.start_time, slot.end_time, startTime, endTime)
+  const [courtSlots, courtBookings] = await Promise.all([
+    getCourtAvailability(courtId),
+    getCourtBookingsForDate(courtId, bookingDate),
+  ]);
+  const generatedCourtSlots = buildBookableSlots(courtSlots, courtBookings, weekday);
+  const matchingCourtSlot = generatedCourtSlots.find((slot) => (
+    slot.startTime === startTime && slot.endTime === endTime
   ));
 
   if (!matchingCourtSlot) {
@@ -22,9 +70,13 @@ const validateAvailability = async ({ bookingDate, startTime, endTime, courtId, 
   }
 
   if (coachId) {
-    const coachSlots = await getCoachAvailability(coachId);
-    const matchingCoachSlot = coachSlots.find((slot) => (
-      slot.weekday === weekday && slotContains(slot.start_time, slot.end_time, startTime, endTime)
+    const [coachSlots, coachBookings] = await Promise.all([
+      getCoachAvailability(coachId),
+      getCoachBookingsForDate(bookingDate, [Number(coachId)]),
+    ]);
+    const generatedCoachSlots = buildBookableSlots(coachSlots, coachBookings, weekday);
+    const matchingCoachSlot = generatedCoachSlots.find((slot) => (
+      slot.startTime === startTime && slot.endTime === endTime
     ));
 
     if (!matchingCoachSlot) {
@@ -33,6 +85,71 @@ const validateAvailability = async ({ bookingDate, startTime, endTime, courtId, 
   }
 
   return null;
+};
+
+const getBookingAvailability = async (req, res, next) => {
+  try {
+    const { courtId, bookingDate } = req.query;
+
+    if (!courtId || !bookingDate) {
+      return res.status(400).json({ message: 'Court and booking date are required.' });
+    }
+
+    const court = await getCourtById(courtId);
+    if (!court) {
+      return res.status(404).json({ message: 'Court not found.' });
+    }
+
+    const weekday = weekdayFromDate(bookingDate);
+    if (weekday === null) {
+      return res.status(400).json({ message: 'Invalid booking date.' });
+    }
+
+    const [courtAvailability, courtBookings, matchingCoaches] = await Promise.all([
+      getCourtAvailability(courtId),
+      getCourtBookingsForDate(courtId, bookingDate),
+      searchCoaches({ sport: court.sport_type }),
+    ]);
+
+    const availableCourtSlots = buildBookableSlots(courtAvailability, courtBookings, weekday);
+
+    const coachIds = matchingCoaches.map((coach) => coach.id);
+    const [coachAvailabilityRows, coachBookings] = await Promise.all([
+      Promise.all(coachIds.map((coachId) => getCoachAvailability(coachId))),
+      getCoachBookingsForDate(bookingDate, coachIds),
+    ]);
+
+    const bookingsByCoach = coachBookings.reduce((accumulator, booking) => {
+      accumulator[booking.coach_id] ||= [];
+      accumulator[booking.coach_id].push(booking);
+      return accumulator;
+    }, {});
+
+    const coaches = matchingCoaches.map((coach, index) => {
+      const availableSlots = buildBookableSlots(
+        coachAvailabilityRows[index],
+        bookingsByCoach[coach.id] || [],
+        weekday,
+      );
+
+      return {
+        ...coach,
+        availableSlots,
+      };
+    }).filter((coach) => coach.availableSlots.length > 0);
+
+    const availableWeekdays = [...new Set(courtAvailability.map((slot) => slot.weekday))].sort((a, b) => a - b);
+
+    return res.json({
+      court,
+      bookingDate,
+      availableWeekdays,
+      availableCourtSlots,
+      coaches,
+    });
+  } catch (error) {
+    return next(error);
+  }
 };
 
 const createNewBooking = async (req, res, next) => {
@@ -152,6 +269,7 @@ const cancelExistingBooking = async (req, res, next) => {
 module.exports = {
   cancelExistingBooking,
   createNewBooking,
+  getBookingAvailability,
   getCoachManagedBookings,
   getMyBookings,
   getOwnerManagedBookings,

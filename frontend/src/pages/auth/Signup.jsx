@@ -11,6 +11,12 @@ const roleOptions = [
   { value: 'owner', label: 'Court Owner' },
 ];
 
+const skillLevelOptions = [
+  { value: 'Beginner', label: 'Beginner' },
+  { value: 'Moderate', label: 'Moderate' },
+  { value: 'Advanced', label: 'Advanced' },
+];
+
 export default function Signup() {
   const navigate = useNavigate();
   const { signup } = useAuth();
@@ -53,7 +59,15 @@ export default function Signup() {
           <Input label="Password" name="password" type="password" value={form.password} onChange={handleChange} required />
           <Input label="Role" as="select" name="role" value={form.role} onChange={handleChange} options={roleOptions} />
           <Input label="Primary sport" name="primarySport" value={form.primarySport} onChange={handleChange} required />
-          <Input label="Skill level" name="skillLevel" value={form.skillLevel} onChange={handleChange} required />
+          <Input
+            label="Skill level"
+            as="select"
+            name="skillLevel"
+            value={form.skillLevel}
+            onChange={handleChange}
+            options={skillLevelOptions}
+            required
+          />
           <Input label="City" name="city" value={form.city} onChange={handleChange} required />
           <Input label="Bio" as="textarea" name="bio" value={form.bio} onChange={handleChange} rows="4" />
           {error && <p className="form-error">{error}</p>}
