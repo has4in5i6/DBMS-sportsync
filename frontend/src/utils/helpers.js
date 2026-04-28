@@ -2,7 +2,18 @@ export const formatDate = (value) => {
   if (!value) {
     return '-';
   }
-  return new Date(`${value}T00:00:00`).toLocaleDateString();
+
+  if (value instanceof Date) {
+    const time = value.getTime();
+    return Number.isNaN(time) ? '-' : value.toLocaleDateString();
+  }
+
+  const raw = String(value).trim();
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+    ? new Date(`${raw}T00:00:00Z`)
+    : new Date(raw);
+
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
 };
 
 export const formatTime = (value) => value?.slice(0, 5) || '-';

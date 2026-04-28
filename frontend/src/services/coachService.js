@@ -5,3 +5,7 @@ export const addCoachAvailability = (payload) => request('/coaches/me/availabili
   method: 'POST',
   body: JSON.stringify(payload),
 });
+
+export const deleteCoachAvailability = (availabilityId) => request(`/coaches/me/availability/${availabilityId}`, {
+  method: 'DELETE',
+});

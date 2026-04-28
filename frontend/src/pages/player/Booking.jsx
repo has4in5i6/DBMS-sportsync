@@ -101,17 +101,34 @@ export default function Booking() {
           const selectedPreferredSlot = (data.availableCourtSlots || []).find((slot) => (
             `${slot.weekday}-${slot.startTime}-${slot.endTime}` === preferredSlotValue
           ));
-          const firstSlot = selectedPreferredSlot || data.availableCourtSlots[0];
+          const coachSlotKeys = new Set(
+            (data.coaches || []).flatMap((coach) => coach.availableSlots.map((slot) => (
+              `${slot.weekday}-${slot.startTime}-${slot.endTime}`
+            ))),
+          );
+
+          const firstSlotCandidate = selectedPreferredSlot
+            || ((data.coaches || []).length > 0
+              ? (data.availableCourtSlots || []).find((slot) => coachSlotKeys.has(`${slot.weekday}-${slot.startTime}-${slot.endTime}`))
+              : null)
+            || data.availableCourtSlots[0];
+
+          const firstSlot = firstSlotCandidate || data.availableCourtSlots[0];
           const slotValue = `${firstSlot.weekday}-${firstSlot.startTime}-${firstSlot.endTime}`;
           const matchingPreferredCoach = (data.coaches || []).find((coach) => (
             String(coach.id) === form.coachId
             && coach.availableSlots.some((slot) => `${slot.weekday}-${slot.startTime}-${slot.endTime}` === slotValue)
           ));
+          const firstCoachForSlot = (data.coaches || []).find((coach) => (
+            coach.availableSlots.some((slot) => `${slot.weekday}-${slot.startTime}-${slot.endTime}` === slotValue)
+          ));
 
           setForm((current) => ({
             ...current,
             courtSlot: slotValue,
-            coachId: matchingPreferredCoach ? String(matchingPreferredCoach.id) : '',
+            coachId: matchingPreferredCoach
+              ? String(matchingPreferredCoach.id)
+              : (firstCoachForSlot ? String(firstCoachForSlot.id) : ''),
             startTime: firstSlot.startTime,
             endTime: firstSlot.endTime,
           }));
@@ -209,7 +226,7 @@ export default function Booking() {
   };
 
   return (
-    <div className="page-shell">
+    <div className="page-shell booking-shell">
       <div className="dashboard-grid">
         <Card title="Available courts" subtitle="Browse every active court, then lock in the one you want.">
           <div className="selection-grid">
@@ -234,83 +251,87 @@ export default function Booking() {
         </Card>
 
         <Card title="Create booking" subtitle="Choose your selected court, optional coach, and session time.">
-          <form className="grid-form" onSubmit={handleSubmit}>
-            <Input
-              label="Court"
-              as="select"
-              name="courtId"
-              value={form.courtId}
-              onChange={handleChange}
-              options={[
-                { value: '', label: 'Select a court' },
-                ...courts.map((court) => ({ value: String(court.id), label: `${court.name} - ${court.sport_type}` })),
-              ]}
-              required
-            />
-            <Input label="Booking date" type="date" name="bookingDate" value={form.bookingDate} onChange={handleChange} required />
-            <Input
-              label="Available court slot"
-              as="select"
-              name="courtSlot"
-              value={form.courtSlot}
-              onChange={handleChange}
-              options={[
-                {
-                  value: '',
-                  label: form.bookingDate
-                    ? (availability.availableCourtSlots.length > 0 ? 'Select a court slot' : 'No court slots available on this date')
-                    : 'Choose a booking date first',
-                },
-                ...availability.availableCourtSlots.map((slot) => ({
-                  value: `${slot.weekday}-${slot.startTime}-${slot.endTime}`,
-                  label: `${weekdayLabels[slot.weekday]} • ${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}`,
-                })),
-              ]}
-              required
-            />
-            <Input
-              label="Available coach"
-              as="select"
-              name="coachId"
-              value={form.coachId}
-              onChange={handleChange}
-              options={[
-                {
-                  value: '',
-                  label: form.courtSlot ? 'No coach' : 'Choose a court slot first',
-                },
-                ...availableCoachesForSelectedSlot.map((coach) => ({
-                  value: String(coach.id),
-                  label: `${coach.full_name} - ${coach.primary_sport} • ${formatTime(form.startTime)} - ${formatTime(form.endTime)}`,
-                })),
-              ]}
-            />
-            <Input label="Start time" type="time" name="startTime" value={form.startTime} readOnly required />
-            <Input label="End time" type="time" name="endTime" value={form.endTime} readOnly required />
-            <Input label="Notes" as="textarea" name="notes" value={form.notes} onChange={handleChange} rows="4" />
-            <p className="group-note">
-              Pick a date first and the form will show only bookable court slots and matching coaches for that day.
-              {availability.availableWeekdays.length > 0 && ` This court operates on ${availability.availableWeekdays.map((day) => weekdayLabels[day]).join(', ')}.`}
-              {(bookingPref.courtId || bookingPref.coachId) && ' This page was prefilled from a slot you selected in search.'}
-            </p>
-            {message && <p className="form-success">{message}</p>}
-            {error && <p className="form-error">{error}</p>}
-            <Button type="submit">Book now</Button>
-          </form>
+          <div className="scroll-box booking-form-scroll">
+            <form className="grid-form" onSubmit={handleSubmit}>
+              <Input
+                label="Court"
+                as="select"
+                name="courtId"
+                value={form.courtId}
+                onChange={handleChange}
+                options={[
+                  { value: '', label: 'Select a court' },
+                  ...courts.map((court) => ({ value: String(court.id), label: `${court.name} - ${court.sport_type}` })),
+                ]}
+                required
+              />
+              <Input label="Booking date" type="date" name="bookingDate" value={form.bookingDate} onChange={handleChange} required />
+              <Input
+                label="Available court slot"
+                as="select"
+                name="courtSlot"
+                value={form.courtSlot}
+                onChange={handleChange}
+                options={[
+                  {
+                    value: '',
+                    label: form.bookingDate
+                      ? (availability.availableCourtSlots.length > 0 ? 'Select a court slot' : 'No court slots available on this date')
+                      : 'Choose a booking date first',
+                  },
+                  ...availability.availableCourtSlots.map((slot) => ({
+                    value: `${slot.weekday}-${slot.startTime}-${slot.endTime}`,
+                    label: `${weekdayLabels[slot.weekday]} • ${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}`,
+                  })),
+                ]}
+                required
+              />
+              <Input
+                label="Available coach"
+                as="select"
+                name="coachId"
+                value={form.coachId}
+                onChange={handleChange}
+                options={[
+                  {
+                    value: '',
+                    label: form.courtSlot ? 'No coach' : 'Choose a court slot first',
+                  },
+                  ...availableCoachesForSelectedSlot.map((coach) => ({
+                    value: String(coach.id),
+                    label: `${coach.full_name} - ${coach.primary_sport} • ${formatTime(form.startTime)} - ${formatTime(form.endTime)}`,
+                  })),
+                ]}
+              />
+              <Input label="Start time" type="time" name="startTime" value={form.startTime} readOnly required />
+              <Input label="End time" type="time" name="endTime" value={form.endTime} readOnly required />
+              <Input label="Notes" as="textarea" name="notes" value={form.notes} onChange={handleChange} rows="4" />
+              <p className="group-note">
+                Pick a date first and the form will show only bookable court slots and matching coaches for that day.
+                {availability.availableWeekdays.length > 0 && ` This court operates on ${availability.availableWeekdays.map((day) => weekdayLabels[day]).join(', ')}.`}
+                {(bookingPref.courtId || bookingPref.coachId) && ' This page was prefilled from a slot you selected in search.'}
+              </p>
+              {message && <p className="form-success">{message}</p>}
+              {error && <p className="form-error">{error}</p>}
+              <Button type="submit">Book now</Button>
+            </form>
+          </div>
         </Card>
 
         <Card title="My bookings" subtitle="Sessions you have reserved so far.">
-          {bookings.map((booking) => (
-            <div className="list-item" key={booking.id}>
-              <strong>{booking.court_name}</strong>
-              <span>{formatDate(booking.booking_date)} • {formatTime(booking.start_time)} - {formatTime(booking.end_time)}</span>
-              <span>{booking.coach_name ? `Coach: ${booking.coach_name}` : 'Court-only booking'} • Status: {booking.status}</span>
-              {booking.status === 'confirmed' && (
-                <Button variant="ghost" onClick={() => handleCancel(booking.id)}>Cancel</Button>
-              )}
-            </div>
-          ))}
-          {bookings.length === 0 && <p>No bookings yet.</p>}
+          <div className="scroll-box booking-form-scroll">
+            {bookings.map((booking) => (
+              <div className="list-item" key={booking.id}>
+                <strong>{booking.court_name}</strong>
+                <span>{formatDate(booking.booking_date)} • {formatTime(booking.start_time)} - {formatTime(booking.end_time)}</span>
+                <span>{booking.coach_name ? `Coach: ${booking.coach_name}` : 'Court-only booking'} • Status: {booking.status}</span>
+                {booking.status === 'confirmed' && (
+                  <Button variant="ghost" onClick={() => handleCancel(booking.id)}>Cancel</Button>
+                )}
+              </div>
+            ))}
+            {bookings.length === 0 && <p>No bookings yet.</p>}
+          </div>
         </Card>
       </div>
     </div>

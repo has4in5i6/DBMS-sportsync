@@ -1,5 +1,6 @@
 const {
   addCoachAvailability,
+  deleteCoachAvailability,
   getCoachAvailability,
   getCoachBookings,
   getCoachById,
@@ -52,8 +53,22 @@ const addMyAvailability = async (req, res, next) => {
   }
 };
 
+const deleteMyAvailability = async (req, res, next) => {
+  try {
+    const availability = await deleteCoachAvailability(req.session.user.id, req.params.availabilityId);
+    if (!availability) {
+      return res.status(404).json({ message: 'Availability slot not found.' });
+    }
+
+    return res.json({ availability, message: 'Availability slot deleted successfully.' });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   addMyAvailability,
+  deleteMyAvailability,
   getCoach,
   getMyCoachDashboard,
   listCoaches,

@@ -67,26 +67,30 @@ export default function Home() {
             </div>
           </Card>
 
-          <Card title="Upcoming activity" subtitle="A quick snapshot of your next sessions.">
-            {overview.bookings.length === 0 && <p>No bookings yet.</p>}
-            {overview.bookings.map((booking) => (
-              <div className="list-item" key={booking.id}>
-                <strong>{booking.court_name}</strong>
-                <span>{formatDate(booking.booking_date)} • {formatTime(booking.start_time)} - {formatTime(booking.end_time)}</span>
-              </div>
-            ))}
+          <Card className="home-activity-card" title="Upcoming activity" subtitle="A quick snapshot of your next sessions.">
+            <div className="scroll-box home-activity-scroll">
+              {overview.bookings.length === 0 && <p>No bookings yet.</p>}
+              {overview.bookings.map((booking) => (
+                <div className="list-item" key={booking.id}>
+                  <strong>{booking.court_name}</strong>
+                  <span>{formatDate(booking.booking_date)} • {formatTime(booking.start_time)} - {formatTime(booking.end_time)}</span>
+                </div>
+              ))}
+            </div>
           </Card>
 
           {user.role === 'player' && (
-            <Card title="Your groups" subtitle="Stay connected with regular play circles.">
-              {overview.groups.length === 0 && <p>You are not in any groups yet.</p>}
-              {overview.groups.map((group) => (
-                <div className="list-item" key={group.id}>
-                  <strong>{group.name}</strong>
-                  <span>{group.sport_type} • {group.city} • {group.member_count} members</span>
-                  <Link className="text-link" to={`/groups/${group.id}`}>Open group</Link>
-                </div>
-              ))}
+            <Card className="home-groups-card" title="Your groups" subtitle="Stay connected with regular play circles.">
+              <div className="scroll-box home-groups-scroll">
+                {overview.groups.length === 0 && <p>You are not in any groups yet.</p>}
+                {overview.groups.map((group) => (
+                  <div className="list-item" key={group.id}>
+                    <strong>{group.name}</strong>
+                    <span>{group.sport_type} • {group.city} • {group.member_count} members</span>
+                    <Link className="text-link" to={`/groups/${group.id}`}>Open group</Link>
+                  </div>
+                ))}
+              </div>
             </Card>
           )}
         </section>

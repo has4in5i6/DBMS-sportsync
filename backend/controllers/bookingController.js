@@ -14,6 +14,7 @@ const {
   durationInHours,
   minutesToTime,
   overlaps,
+  slotContains,
   toMinutes,
   weekdayFromDate,
 } = require('../utils/timeUtils');
@@ -28,10 +29,13 @@ const buildBookableSlots = (availabilityRows, bookingRows, weekday) => {
   const generatedSlots = [];
 
   availabilityRows
-    .filter((slot) => slot.weekday === weekday)
+    .filter((slot) => Number(slot.weekday) === weekday)
     .forEach((slot) => {
       const startMinutes = toMinutes(slot.start_time);
       const endMinutes = toMinutes(slot.end_time);
+      if (startMinutes === null || endMinutes === null) {
+        return;
+      }
 
       // Generate one-hour slots every 30 minutes so coach and court windows can intersect cleanly.
       for (let cursor = startMinutes; cursor + 60 <= endMinutes; cursor += 30) {
@@ -56,16 +60,28 @@ const buildBookableSlots = (availabilityRows, bookingRows, weekday) => {
 
 const validateAvailability = async ({ bookingDate, startTime, endTime, courtId, coachId }) => {
   const weekday = weekdayFromDate(bookingDate);
+  if (weekday === null) {
+    return 'Invalid booking date.';
+  }
+
   const [courtSlots, courtBookings] = await Promise.all([
     getCourtAvailability(courtId),
     getCourtBookingsForDate(courtId, bookingDate),
   ]);
-  const generatedCourtSlots = buildBookableSlots(courtSlots, courtBookings, weekday);
-  const matchingCourtSlot = generatedCourtSlots.find((slot) => (
-    slot.startTime === startTime && slot.endTime === endTime
+
+  const courtHasWindow = courtSlots.some((slot) => (
+    Number(slot.weekday) === weekday && slotContains(slot.start_time, slot.end_time, startTime, endTime)
   ));
 
-  if (!matchingCourtSlot) {
+  if (!courtHasWindow) {
+    return 'Selected court is not available in that time slot.';
+  }
+
+  const courtHasConflict = courtBookings.some((booking) => (
+    overlaps(startTime, endTime, booking.start_time, booking.end_time)
+  ));
+
+  if (courtHasConflict) {
     return 'Selected court is not available in that time slot.';
   }
 
@@ -74,12 +90,21 @@ const validateAvailability = async ({ bookingDate, startTime, endTime, courtId, 
       getCoachAvailability(coachId),
       getCoachBookingsForDate(bookingDate, [Number(coachId)]),
     ]);
-    const generatedCoachSlots = buildBookableSlots(coachSlots, coachBookings, weekday);
-    const matchingCoachSlot = generatedCoachSlots.find((slot) => (
-      slot.startTime === startTime && slot.endTime === endTime
+
+    const coachHasWindow = coachSlots.some((slot) => (
+      Number(slot.weekday) === weekday && slotContains(slot.start_time, slot.end_time, startTime, endTime)
     ));
 
-    if (!matchingCoachSlot) {
+    if (!coachHasWindow) {
+      return 'Selected coach is not available in that time slot.';
+    }
+
+    const coachBookingsForCoach = coachBookings.filter((booking) => Number(booking.coach_id) === Number(coachId));
+    const coachHasConflict = coachBookingsForCoach.some((booking) => (
+      overlaps(startTime, endTime, booking.start_time, booking.end_time)
+    ));
+
+    if (coachHasConflict) {
       return 'Selected coach is not available in that time slot.';
     }
   }
@@ -112,6 +137,9 @@ const getBookingAvailability = async (req, res, next) => {
     ]);
 
     const availableCourtSlots = buildBookableSlots(courtAvailability, courtBookings, weekday);
+    const courtSlotKeys = new Set(
+      availableCourtSlots.map((slot) => `${slot.weekday}-${slot.startTime}-${slot.endTime}`),
+    );
 
     const coachIds = matchingCoaches.map((coach) => coach.id);
     const [coachAvailabilityRows, coachBookings] = await Promise.all([
@@ -130,7 +158,7 @@ const getBookingAvailability = async (req, res, next) => {
         coachAvailabilityRows[index],
         bookingsByCoach[coach.id] || [],
         weekday,
-      );
+      ).filter((slot) => courtSlotKeys.has(`${slot.weekday}-${slot.startTime}-${slot.endTime}`));
 
       return {
         ...coach,
@@ -138,7 +166,9 @@ const getBookingAvailability = async (req, res, next) => {
       };
     }).filter((coach) => coach.availableSlots.length > 0);
 
-    const availableWeekdays = [...new Set(courtAvailability.map((slot) => slot.weekday))].sort((a, b) => a - b);
+    const availableWeekdays = [...new Set(courtAvailability.map((slot) => Number(slot.weekday)))]
+      .filter((value) => !Number.isNaN(value))
+      .sort((a, b) => a - b);
 
     return res.json({
       court,

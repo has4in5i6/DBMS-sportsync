@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import Input from '../../components/Input';
-import { addCoachAvailability, fetchCoachDashboard } from '../../services/coachService';
+import { addCoachAvailability, deleteCoachAvailability, fetchCoachDashboard } from '../../services/coachService';
 import { formatDate, formatTime } from '../../utils/helpers';
 
 const weekdayOptions = [
@@ -14,6 +14,18 @@ const weekdayOptions = [
   { value: 5, label: 'Friday' },
   { value: 6, label: 'Saturday' },
 ];
+
+const getNextDateForWeekday = (weekday) => {
+  if (weekday === null || weekday === undefined || Number.isNaN(Number(weekday))) {
+    return '';
+  }
+
+  const current = new Date();
+  current.setHours(0, 0, 0, 0);
+  const distance = (Number(weekday) - current.getDay() + 7) % 7;
+  current.setDate(current.getDate() + distance);
+  return current.toISOString().slice(0, 10);
+};
 
 export default function Schedule() {
   const [data, setData] = useState(null);
@@ -51,6 +63,16 @@ export default function Schedule() {
     }
   };
 
+  const handleDelete = async (availabilityId) => {
+    try {
+      setError('');
+      await deleteCoachAvailability(availabilityId);
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   if (!data) {
     return <div className="page-shell"><p>{error || 'Loading schedule...'}</p></div>;
   }
@@ -69,24 +91,35 @@ export default function Schedule() {
         </Card>
 
         <Card title="Availability" subtitle="Current open coaching windows.">
-          {data.availability.map((slot) => (
-            <div className="list-item" key={slot.id}>
-              <strong>{weekdayOptions.find((option) => option.value === slot.weekday)?.label}</strong>
-              <span>{formatTime(slot.start_time)} - {formatTime(slot.end_time)}</span>
-            </div>
-          ))}
-          {data.availability.length === 0 && <p>No availability slots yet.</p>}
+          <div className="scroll-box">
+            {data.availability.map((slot) => (
+              <div className="list-item" key={slot.id}>
+                <strong>
+                  {weekdayOptions.find((option) => option.value === slot.weekday)?.label}
+                  {' '}
+                  <span>({formatDate(getNextDateForWeekday(slot.weekday))})</span>
+                </strong>
+                <span>{formatTime(slot.start_time)} - {formatTime(slot.end_time)}</span>
+                <div className="inline-actions">
+                  <Button variant="secondary" onClick={() => handleDelete(slot.id)}>Delete slot</Button>
+                </div>
+              </div>
+            ))}
+            {data.availability.length === 0 && <p>No availability slots yet.</p>}
+          </div>
         </Card>
 
         <Card title="Booked sessions" subtitle="Sessions already reserved on your calendar.">
-          {data.bookings.map((booking) => (
-            <div className="list-item" key={booking.id}>
-              <strong>{booking.player_name}</strong>
-              <span>{booking.court_name}</span>
-              <span>{formatDate(booking.booking_date)} • {formatTime(booking.start_time)} - {formatTime(booking.end_time)}</span>
-            </div>
-          ))}
-          {data.bookings.length === 0 && <p>No booked sessions yet.</p>}
+          <div className="scroll-box">
+            {data.bookings.map((booking) => (
+              <div className="list-item" key={booking.id}>
+                <strong>{booking.player_name}</strong>
+                <span>{booking.court_name}</span>
+                <span>{formatDate(booking.booking_date)} • {formatTime(booking.start_time)} - {formatTime(booking.end_time)}</span>
+              </div>
+            ))}
+            {data.bookings.length === 0 && <p>No booked sessions yet.</p>}
+          </div>
         </Card>
       </div>
     </div>

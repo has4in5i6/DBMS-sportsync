@@ -89,6 +89,47 @@ const addCoachAvailability = async (coachId, slot) => {
   return result.rows[0];
 };
 
+const deleteCoachAvailability = async (coachId, availabilityId) => {
+  const slotResult = await db.query(
+    `SELECT id, weekday, start_time, end_time
+     FROM coach_availability
+     WHERE id = $1 AND coach_id = $2`,
+    [availabilityId, coachId],
+  );
+
+  const slot = slotResult.rows[0] || null;
+  if (!slot) {
+    return null;
+  }
+
+  const conflictsResult = await db.query(
+    `SELECT 1
+     FROM bookings
+     WHERE coach_id = $1
+       AND status = 'confirmed'
+       AND EXTRACT(DOW FROM booking_date)::int = $2
+       AND start_time < $4
+       AND end_time > $3
+     LIMIT 1`,
+    [coachId, slot.weekday, slot.start_time, slot.end_time],
+  );
+
+  if (conflictsResult.rows.length > 0) {
+    const error = new Error('This availability slot has bookings and cannot be deleted.');
+    error.status = 409;
+    throw error;
+  }
+
+  const result = await db.query(
+    `DELETE FROM coach_availability
+     WHERE id = $1 AND coach_id = $2
+     RETURNING *`,
+    [availabilityId, coachId],
+  );
+
+  return result.rows[0] || null;
+};
+
 const getCoachBookings = async (coachId) => {
   const result = await db.query(
     `SELECT
@@ -108,6 +149,7 @@ const getCoachBookings = async (coachId) => {
 
 module.exports = {
   addCoachAvailability,
+  deleteCoachAvailability,
   getCoachAvailability,
   getCoachBookings,
   getCoachById,
