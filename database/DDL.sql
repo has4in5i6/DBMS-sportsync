@@ -2,6 +2,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 DROP TABLE IF EXISTS reviews CASCADE;
 DROP TABLE IF EXISTS group_messages CASCADE;
+DROP TABLE IF EXISTS group_join_requests CASCADE;
 DROP TABLE IF EXISTS group_members CASCADE;
 DROP TABLE IF EXISTS player_groups CASCADE;
 DROP TABLE IF EXISTS bookings CASCADE;
@@ -93,6 +94,17 @@ CREATE TABLE player_groups (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE group_join_requests (
+  id SERIAL PRIMARY KEY,
+  group_id INT NOT NULL REFERENCES player_groups(id) ON DELETE CASCADE,
+  requester_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected')),
+  reviewed_by INT REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  reviewed_at TIMESTAMP,
+  UNIQUE (group_id, requester_id)
+);
+
 CREATE TABLE group_members (
   group_id INT NOT NULL REFERENCES player_groups(id) ON DELETE CASCADE,
   user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -127,4 +139,6 @@ CREATE TABLE reviews (
 CREATE INDEX idx_bookings_court_time ON bookings (court_id, booking_date, start_time, end_time);
 CREATE INDEX idx_bookings_coach_time ON bookings (coach_id, booking_date, start_time, end_time);
 CREATE INDEX idx_bookings_player_time ON bookings (player_id, booking_date, start_time, end_time);
+CREATE INDEX idx_group_join_requests_requester_status ON group_join_requests (requester_id, status, created_at);
+CREATE INDEX idx_group_join_requests_group_status ON group_join_requests (group_id, status, created_at);
 CREATE INDEX idx_group_messages_group_time ON group_messages (group_id, created_at);

@@ -1,18 +1,23 @@
 const {
+  acceptJoinRequest,
   addGroupMessage,
+  clearRejectedJoinRequest,
   createGroup,
+  createJoinRequest,
   getGroupById,
   getGroupMembers,
   getGroupMessages,
   isGroupMember,
-  joinGroup,
   listGroups,
   listGroupsForUser,
+  listJoinRequestsForUser,
+  listPendingJoinRequestsForGroup,
+  rejectJoinRequest,
 } = require('../models/groupModel');
 
-const getAllGroups = async (_req, res, next) => {
+const getAllGroups = async (req, res, next) => {
   try {
-    const groups = await listGroups();
+    const groups = await listGroups(req.session?.user?.id || null);
     return res.json({ groups });
   } catch (error) {
     return next(error);
@@ -23,6 +28,15 @@ const getMyGroups = async (req, res, next) => {
   try {
     const groups = await listGroupsForUser(req.session.user.id);
     return res.json({ groups });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getMyJoinRequests = async (req, res, next) => {
+  try {
+    const requests = await listJoinRequestsForUser(req.session.user.id);
+    return res.json({ requests });
   } catch (error) {
     return next(error);
   }
@@ -45,6 +59,15 @@ const getGroupDetails = async (req, res, next) => {
   }
 };
 
+const getGroupJoinRequests = async (req, res, next) => {
+  try {
+    const requests = await listPendingJoinRequestsForGroup(req.params.groupId, req.session.user.id);
+    return res.json({ requests });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const createMyGroup = async (req, res, next) => {
   try {
     const group = await createGroup(req.session.user.id, req.body);
@@ -56,11 +79,48 @@ const createMyGroup = async (req, res, next) => {
 
 const joinExistingGroup = async (req, res, next) => {
   try {
-    const membership = await joinGroup(req.params.groupId, req.session.user.id);
-    return res.json({
-      joined: Boolean(membership),
-      message: membership ? 'Joined group successfully.' : 'You are already a member of this group.',
+    const request = await createJoinRequest(req.params.groupId, req.session.user.id);
+    return res.status(201).json({
+      request,
+      message: 'Join request sent successfully.',
     });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const approveExistingJoinRequest = async (req, res, next) => {
+  try {
+    const request = await acceptJoinRequest(req.params.requestId, req.session.user.id);
+    return res.json({
+      request,
+      message: 'Join request accepted successfully.',
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const rejectExistingJoinRequest = async (req, res, next) => {
+  try {
+    const request = await rejectJoinRequest(req.params.requestId, req.session.user.id);
+    return res.json({
+      request,
+      message: 'Join request rejected successfully.',
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const clearMyRejectedJoinRequest = async (req, res, next) => {
+  try {
+    const request = await clearRejectedJoinRequest(req.params.requestId, req.session.user.id);
+    if (!request) {
+      return res.status(404).json({ message: 'Rejected join request not found.' });
+    }
+
+    return res.status(204).send();
   } catch (error) {
     return next(error);
   }
@@ -91,10 +151,15 @@ const postGroupMessage = async (req, res, next) => {
 };
 
 module.exports = {
+  approveExistingJoinRequest,
+  clearMyRejectedJoinRequest,
   createMyGroup,
   getAllGroups,
   getGroupDetails,
+  getGroupJoinRequests,
   getMyGroups,
+  getMyJoinRequests,
   joinExistingGroup,
   postGroupMessage,
+  rejectExistingJoinRequest,
 };
