@@ -67,7 +67,7 @@ CREATE TABLE court_availability (
 
 CREATE TABLE bookings (
   id SERIAL PRIMARY KEY,
-  player_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  player_id INT REFERENCES users(id) ON DELETE CASCADE,
   court_id INT NOT NULL REFERENCES courts(id) ON DELETE CASCADE,
   coach_id INT REFERENCES coach_profiles(user_id) ON DELETE SET NULL,
   booking_date DATE NOT NULL,
@@ -77,7 +77,8 @@ CREATE TABLE bookings (
   total_price NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (total_price >= 0),
   notes TEXT DEFAULT '',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CHECK (start_time < end_time)
+  CHECK (start_time < end_time),
+  CHECK (player_id IS NOT NULL OR coach_id IS NOT NULL)
 );
 
 CREATE TABLE player_groups (
