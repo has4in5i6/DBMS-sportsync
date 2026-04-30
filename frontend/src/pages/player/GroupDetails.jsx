@@ -3,7 +3,14 @@ import { Link, useParams } from 'react-router-dom';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import { useAuth } from '../../context/AuthContext';
-import { fetchGroupById, joinGroup, postGroupMessage } from '../../services/groupService';
+import {
+  approveJoinRequest,
+  fetchGroupById,
+  fetchGroupJoinRequests,
+  joinGroup,
+  postGroupMessage,
+  rejectJoinRequest,
+} from '../../services/groupService';
 
 export default function GroupDetails() {
   const { groupId } = useParams();
@@ -11,6 +18,7 @@ export default function GroupDetails() {
   const [group, setGroup] = useState(null);
   const [members, setMembers] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [joinRequests, setJoinRequests] = useState([]);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [chatText, setChatText] = useState('');
@@ -22,6 +30,13 @@ export default function GroupDetails() {
       setGroup(response.group);
       setMembers(response.members);
       setMessages(response.messages || []);
+
+      if (response.group.is_creator) {
+        const requestResponse = await fetchGroupJoinRequests(groupId);
+        setJoinRequests(requestResponse.requests || []);
+      } else {
+        setJoinRequests([]);
+      }
     } catch (err) {
       setError(err.message);
     }
@@ -33,7 +48,30 @@ export default function GroupDetails() {
 
   const handleJoin = async () => {
     try {
+      setError('');
       const response = await joinGroup(groupId);
+      setMessage(response.message);
+      await loadGroup();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleApprove = async (requestId) => {
+    try {
+      setError('');
+      const response = await approveJoinRequest(requestId);
+      setMessage(response.message);
+      await loadGroup();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleReject = async (requestId) => {
+    try {
+      setError('');
+      const response = await rejectJoinRequest(requestId);
       setMessage(response.message);
       await loadGroup();
     } catch (err) {
@@ -67,6 +105,12 @@ export default function GroupDetails() {
     return <div className="page-shell"><p className="form-error">{error}</p></div>;
   }
 
+  const showJoinButton = user?.role === 'player'
+    && !group.is_member
+    && !group.is_creator
+    && !group.join_request_status
+    && group.member_count < group.max_members;
+
   return (
     <div className="page-shell">
       <div className="dashboard-grid group-layout">
@@ -88,11 +132,17 @@ export default function GroupDetails() {
           </div>
           {message && <p className="form-success">{message}</p>}
           {error && <p className="form-error">{error}</p>}
-          {user?.role === 'player' && !group.is_member && group.member_count < group.max_members && (
-            <Button className="inline-button-gap" onClick={handleJoin}>Join this group</Button>
+          {showJoinButton && (
+            <Button className="inline-button-gap" onClick={handleJoin}>Request to join</Button>
+          )}
+          {group.join_request_status === 'pending' && (
+            <p className="group-note">Your join request is pending approval from the group creator.</p>
+          )}
+          {group.join_request_status === 'rejected' && (
+            <p className="group-note">Your join request was rejected. Clear it from My join requests if you want to request again later.</p>
           )}
           {group.is_member && <p className="group-note">You are a member of this group.</p>}
-          {group.member_count >= group.max_members && !group.is_member && (
+          {group.member_count >= group.max_members && !group.is_member && !group.join_request_status && (
             <p className="group-note">This group has reached its member limit.</p>
           )}
         </Card>
@@ -107,6 +157,22 @@ export default function GroupDetails() {
           ))}
           {members.length === 0 && <p>No members yet.</p>}
         </Card>
+
+        {group.is_creator && (
+          <Card title="Join requests" subtitle="Approve or reject players who want to join your group.">
+            {joinRequests.map((joinRequest) => (
+              <div className="list-item" key={joinRequest.id}>
+                <strong>{joinRequest.full_name}</strong>
+                <span>{joinRequest.primary_sport} • {joinRequest.skill_level} • {joinRequest.city}</span>
+                <div className="inline-actions">
+                  <Button variant="ghost" onClick={() => handleApprove(joinRequest.id)}>Accept</Button>
+                  <Button variant="secondary" onClick={() => handleReject(joinRequest.id)}>Reject</Button>
+                </div>
+              </div>
+            ))}
+            {joinRequests.length === 0 && <p>No pending join requests.</p>}
+          </Card>
+        )}
 
         <Card title="Group chat" subtitle={group.is_member ? 'Coordinate sessions with the group here.' : 'Join the group to unlock the chat.'}>
           {group.is_member ? (

@@ -4,7 +4,14 @@ import Card from '../../components/Card';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { useAuth } from '../../context/AuthContext';
-import { createGroup, fetchGroups, fetchMyGroups, joinGroup } from '../../services/groupService';
+import {
+  clearRejectedJoinRequest,
+  createGroup,
+  fetchGroups,
+  fetchMyGroups,
+  fetchMyJoinRequests,
+  joinGroup,
+} from '../../services/groupService';
 import { fetchCoachById, fetchCoaches } from '../../services/coachService';
 import { fetchCourtById, fetchCourts } from '../../services/courtService';
 import { buildQuery, formatTime } from '../../utils/helpers';
@@ -36,6 +43,7 @@ export default function Search() {
   const [coaches, setCoaches] = useState([]);
   const [groups, setGroups] = useState([]);
   const [myGroups, setMyGroups] = useState([]);
+  const [joinRequests, setJoinRequests] = useState([]);
   const [groupMessage, setGroupMessage] = useState('');
   const [error, setError] = useState('');
   const [expandedCourtId, setExpandedCourtId] = useState(null);
@@ -63,15 +71,16 @@ export default function Search() {
       ];
 
       if (user?.role === 'player') {
-        requests.push(fetchGroups(), fetchMyGroups());
+        requests.push(fetchGroups(), fetchMyGroups(), fetchMyJoinRequests());
       }
 
-      const [courtData, coachData, groupData, myGroupData] = await Promise.all(requests);
+      const [courtData, coachData, groupData, myGroupData, myJoinRequestData] = await Promise.all(requests);
       setCourts(courtData.courts);
       setCoaches(coachData.coaches);
       if (user?.role === 'player') {
         setGroups(groupData.groups);
         setMyGroups(myGroupData.groups);
+        setJoinRequests(myJoinRequestData.requests || []);
       }
     } catch (err) {
       setError(err.message);
@@ -110,8 +119,19 @@ export default function Search() {
   const handleJoinGroup = async (groupId) => {
     try {
       setError('');
-      await joinGroup(groupId);
-      setGroupMessage('Joined group successfully.');
+      const response = await joinGroup(groupId);
+      setGroupMessage(response.message);
+      loadData();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleClearRejectedRequest = async (requestId) => {
+    try {
+      setError('');
+      await clearRejectedJoinRequest(requestId);
+      setGroupMessage('Rejected request removed.');
       loadData();
     } catch (err) {
       setError(err.message);
@@ -173,186 +193,194 @@ export default function Search() {
     }
   };
 
+  const myGroupIds = new Set(myGroups.map((group) => group.id));
+  const joinRequestsByGroupId = joinRequests.reduce((accumulator, request) => {
+    accumulator[request.group_id] = request;
+    return accumulator;
+  }, {});
+  const outstandingJoinRequests = joinRequests.filter((request) => request.status !== 'accepted');
+  const availableGroups = groups.filter((group) => !myGroupIds.has(group.id));
+
   return (
     <div className="page-shell search-shell">
       <div className="search-layout">
         <div className="search-row search-row-top">
           <Card className="search-top-card search-results-card" title="Courts" subtitle="Filter venues separately by sport, city, and budget.">
-          <div className="split-panel">
-            <div className="split-panel-top">
-              <div className="split-panel-header">
-                <strong>Selected court</strong>
-                <span>Click a court below to fill these details.</span>
+            <div className="split-panel">
+              <div className="split-panel-top">
+                <div className="split-panel-header">
+                  <strong>Selected court</strong>
+                  <span>Click a court below to fill these details.</span>
+                </div>
+                <div className="filter-grid">
+                  <Input label="Name" value={selectedCourt?.name || ''} readOnly placeholder="Select a court" />
+                  <Input label="Sport type" value={selectedCourt?.sport_type || ''} readOnly />
+                  <Input label="Location" value={selectedCourt?.location || ''} readOnly />
+                  <Input label="Surface" value={selectedCourt?.surface || ''} readOnly />
+                  <Input label="Price / hour" value={selectedCourt ? `Rs. ${selectedCourt.price_per_hour}` : ''} readOnly />
+                  <Input label="Capacity" value={selectedCourt?.capacity ?? ''} readOnly />
+                </div>
               </div>
-              <div className="filter-grid">
-                <Input label="Name" value={selectedCourt?.name || ''} readOnly placeholder="Select a court" />
-                <Input label="Sport type" value={selectedCourt?.sport_type || ''} readOnly />
-                <Input label="Location" value={selectedCourt?.location || ''} readOnly />
-                <Input label="Surface" value={selectedCourt?.surface || ''} readOnly />
-                <Input label="Price / hour" value={selectedCourt ? `Rs. ${selectedCourt.price_per_hour}` : ''} readOnly />
-                <Input label="Capacity" value={selectedCourt?.capacity ?? ''} readOnly />
-              </div>
-            </div>
 
-            <div className="split-panel-bottom">
-              <div className="filter-grid filter-grid-one-row">
-                <Input
-                  label="Sport type"
-                  as="select"
-                  name="sportType"
-                  value={courtFilters.sportType}
-                  onChange={handleCourtFilterChange}
-                  options={[
-                    { value: '', label: 'Any sport' },
-                    { value: 'Badminton', label: 'Badminton' },
-                    { value: 'Tennis', label: 'Tennis' },
-                  ]}
-                />
-                <Input label="City" name="city" value={courtFilters.city} onChange={handleCourtFilterChange} />
-                <Input label="Max price per hour" name="maxPrice" type="number" value={courtFilters.maxPrice} onChange={handleCourtFilterChange} />
-              </div>
-              <Button onClick={loadData}>Search now</Button>
-              <div className="results-scroll">
-                {courts.map((court) => (
-                  <div className="list-item" key={court.id}>
-                    <button
-                      className="availability-toggle"
-                      type="button"
-                      onClick={() => {
-                        selectCourt(court);
-                        toggleCourtAvailability(court.id);
-                      }}
-                    >
-                      <strong>{court.name}</strong>
-                      <span>{court.sport_type} • {court.location}</span>
-                      <span>Rs. {court.price_per_hour}/hr • Rating {court.average_rating}</span>
-                      <small className="availability-hint">{expandedCourtId === court.id ? 'Hide available weekly slots' : 'Show available weekly slots'}</small>
-                    </button>
-                    {expandedCourtId === court.id && (
-                      <div className="availability-panel">
-                        {Object.entries(groupSlotsByWeekday(courtAvailability[court.id] || [])).map(([weekday, slots]) => (
-                          <div className="availability-day" key={weekday}>
-                            <strong>{weekdayLabels[Number(weekday)]}</strong>
-                            <div className="slot-row">
-                              {slots.map((slot) => (
-                                user?.role === 'player' ? (
-                                  <Link
-                                    className="slot-chip"
-                                    key={`${slot.weekday}-${slot.start_time}-${slot.end_time}`}
-                                    to={buildBookingLink({
-                                      courtId: court.id,
-                                      sportType: court.sport_type,
-                                      weekday: slot.weekday,
-                                      startTime: formatTime(slot.start_time),
-                                      endTime: formatTime(slot.end_time),
-                                    })}
-                                  >
-                                    {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
-                                  </Link>
-                                ) : (
-                                  <span
-                                    className="slot-chip is-disabled"
-                                    key={`${slot.weekday}-${slot.start_time}-${slot.end_time}`}
-                                    title="Only players can create bookings."
-                                  >
-                                    {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
-                                  </span>
-                                )
-                              ))}
+              <div className="split-panel-bottom">
+                <div className="filter-grid filter-grid-one-row">
+                  <Input
+                    label="Sport type"
+                    as="select"
+                    name="sportType"
+                    value={courtFilters.sportType}
+                    onChange={handleCourtFilterChange}
+                    options={[
+                      { value: '', label: 'Any sport' },
+                      { value: 'Badminton', label: 'Badminton' },
+                      { value: 'Tennis', label: 'Tennis' },
+                    ]}
+                  />
+                  <Input label="City" name="city" value={courtFilters.city} onChange={handleCourtFilterChange} />
+                  <Input label="Max price per hour" name="maxPrice" type="number" value={courtFilters.maxPrice} onChange={handleCourtFilterChange} />
+                </div>
+                <Button onClick={loadData}>Search now</Button>
+                <div className="results-scroll">
+                  {courts.map((court) => (
+                    <div className="list-item" key={court.id}>
+                      <button
+                        className="availability-toggle"
+                        type="button"
+                        onClick={() => {
+                          selectCourt(court);
+                          toggleCourtAvailability(court.id);
+                        }}
+                      >
+                        <strong>{court.name}</strong>
+                        <span>{court.sport_type} • {court.location}</span>
+                        <span>Rs. {court.price_per_hour}/hr • Rating {court.average_rating}</span>
+                        <small className="availability-hint">{expandedCourtId === court.id ? 'Hide available weekly slots' : 'Show available weekly slots'}</small>
+                      </button>
+                      {expandedCourtId === court.id && (
+                        <div className="availability-panel">
+                          {Object.entries(groupSlotsByWeekday(courtAvailability[court.id] || [])).map(([weekday, slots]) => (
+                            <div className="availability-day" key={weekday}>
+                              <strong>{weekdayLabels[Number(weekday)]}</strong>
+                              <div className="slot-row">
+                                {slots.map((slot) => (
+                                  user?.role === 'player' ? (
+                                    <Link
+                                      className="slot-chip"
+                                      key={`${slot.weekday}-${slot.start_time}-${slot.end_time}`}
+                                      to={buildBookingLink({
+                                        courtId: court.id,
+                                        sportType: court.sport_type,
+                                        weekday: slot.weekday,
+                                        startTime: formatTime(slot.start_time),
+                                        endTime: formatTime(slot.end_time),
+                                      })}
+                                    >
+                                      {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                                    </Link>
+                                  ) : (
+                                    <span
+                                      className="slot-chip is-disabled"
+                                      key={`${slot.weekday}-${slot.start_time}-${slot.end_time}`}
+                                      title="Only players can create bookings."
+                                    >
+                                      {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                                    </span>
+                                  )
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                        {(courtAvailability[court.id] || []).length === 0 && <p>No available weekly court slots added yet.</p>}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {courts.length === 0 && <p>No courts match your filters.</p>}
+                          ))}
+                          {(courtAvailability[court.id] || []).length === 0 && <p>No available weekly court slots added yet.</p>}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {courts.length === 0 && <p>No courts match your filters.</p>}
+                </div>
               </div>
             </div>
-          </div>
-        </Card>
+          </Card>
 
-        <Card className="search-top-card search-results-card" title="Coaches" subtitle="Apply only the coach filters you want, even just sport.">
-          <div className="split-panel">
-            <div className="split-panel-top">
-              <div className="split-panel-header">
-                <strong>Filters</strong>
-                <span>Search coaches by sport, city, and skill level.</span>
+          <Card className="search-top-card search-results-card" title="Coaches" subtitle="Apply only the coach filters you want, even just sport.">
+            <div className="split-panel">
+              <div className="split-panel-top">
+                <div className="split-panel-header">
+                  <strong>Filters</strong>
+                  <span>Search coaches by sport, city, and skill level.</span>
+                </div>
+                <div className="filter-grid">
+                  <Input label="Sport" name="sport" value={coachFilters.sport} onChange={handleCoachFilterChange} placeholder="Badminton, Tennis..." />
+                  <Input label="City" name="city" value={coachFilters.city} onChange={handleCoachFilterChange} placeholder="Hyderabad" />
+                  <Input
+                    label="Skill level"
+                    as="select"
+                    name="skillLevel"
+                    value={coachFilters.skillLevel}
+                    onChange={handleCoachFilterChange}
+                    options={skillLevelOptions}
+                  />
+                </div>
+                <Button onClick={loadData}>Find coaches</Button>
               </div>
-              <div className="filter-grid">
-                <Input label="Sport" name="sport" value={coachFilters.sport} onChange={handleCoachFilterChange} placeholder="Badminton, Tennis..." />
-                <Input label="City" name="city" value={coachFilters.city} onChange={handleCoachFilterChange} placeholder="Hyderabad" />
-                <Input
-                  label="Skill level"
-                  as="select"
-                  name="skillLevel"
-                  value={coachFilters.skillLevel}
-                  onChange={handleCoachFilterChange}
-                  options={skillLevelOptions}
-                />
-              </div>
-              <Button onClick={loadData}>Find coaches</Button>
-            </div>
 
-            <div className="split-panel-bottom">
-              <div className="split-panel-header">
-                <strong>Available coaches</strong>
-                <span>Click a coach to view weekly slots.</span>
-              </div>
-              <div className="results-scroll is-tall">
-                {coaches.map((coach) => (
-                  <div className="list-item" key={coach.id}>
-                    <button className="availability-toggle" type="button" onClick={() => toggleCoachAvailability(coach.id)}>
-                      <strong>{coach.full_name}</strong>
-                      <span>{coach.primary_sport} • {coach.city} • {coach.experience_years} years experience</span>
-                      <span>Rs. {coach.hourly_rate}/hr • Rating {coach.average_rating}</span>
-                      <small className="availability-hint">{expandedCoachId === coach.id ? 'Hide available weekly slots' : 'Show available weekly slots'}</small>
-                    </button>
-                    {expandedCoachId === coach.id && (
-                      <div className="availability-panel">
-                        {Object.entries(groupSlotsByWeekday(coachAvailability[coach.id] || [])).map(([weekday, slots]) => (
-                          <div className="availability-day" key={weekday}>
-                            <strong>{weekdayLabels[Number(weekday)]}</strong>
-                            <div className="slot-row">
-                              {slots.map((slot) => (
-                                user?.role === 'player' ? (
-                                <Link
-                                  className="slot-chip"
-                                  key={`${slot.weekday}-${slot.start_time}-${slot.end_time}`}
-                                  to={buildBookingLink({
-                                    coachId: coach.id,
-                                    sportType: coach.primary_sport,
-                                    weekday: slot.weekday,
-                                    startTime: formatTime(slot.start_time),
-                                    endTime: formatTime(slot.end_time),
-                                  })}
-                                >
-                                  {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
-                                </Link>
-                                ) : (
-                                  <span
-                                    className="slot-chip is-disabled"
-                                    key={`${slot.weekday}-${slot.start_time}-${slot.end_time}`}
-                                    title="Only players can create bookings."
-                                  >
-                                    {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
-                                  </span>
-                                )
-                              ))}
+              <div className="split-panel-bottom">
+                <div className="split-panel-header">
+                  <strong>Available coaches</strong>
+                  <span>Click a coach to view weekly slots.</span>
+                </div>
+                <div className="results-scroll is-tall">
+                  {coaches.map((coach) => (
+                    <div className="list-item" key={coach.id}>
+                      <button className="availability-toggle" type="button" onClick={() => toggleCoachAvailability(coach.id)}>
+                        <strong>{coach.full_name}</strong>
+                        <span>{coach.primary_sport} • {coach.city} • {coach.experience_years} years experience</span>
+                        <span>Rs. {coach.hourly_rate}/hr • Rating {coach.average_rating}</span>
+                        <small className="availability-hint">{expandedCoachId === coach.id ? 'Hide available weekly slots' : 'Show available weekly slots'}</small>
+                      </button>
+                      {expandedCoachId === coach.id && (
+                        <div className="availability-panel">
+                          {Object.entries(groupSlotsByWeekday(coachAvailability[coach.id] || [])).map(([weekday, slots]) => (
+                            <div className="availability-day" key={weekday}>
+                              <strong>{weekdayLabels[Number(weekday)]}</strong>
+                              <div className="slot-row">
+                                {slots.map((slot) => (
+                                  user?.role === 'player' ? (
+                                    <Link
+                                      className="slot-chip"
+                                      key={`${slot.weekday}-${slot.start_time}-${slot.end_time}`}
+                                      to={buildBookingLink({
+                                        coachId: coach.id,
+                                        sportType: coach.primary_sport,
+                                        weekday: slot.weekday,
+                                        startTime: formatTime(slot.start_time),
+                                        endTime: formatTime(slot.end_time),
+                                      })}
+                                    >
+                                      {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                                    </Link>
+                                  ) : (
+                                    <span
+                                      className="slot-chip is-disabled"
+                                      key={`${slot.weekday}-${slot.start_time}-${slot.end_time}`}
+                                      title="Only players can create bookings."
+                                    >
+                                      {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                                    </span>
+                                  )
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                        {(coachAvailability[coach.id] || []).length === 0 && <p>No available weekly coach slots added yet.</p>}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {coaches.length === 0 && <p>No coaches match your filters.</p>}
+                          ))}
+                          {(coachAvailability[coach.id] || []).length === 0 && <p>No available weekly coach slots added yet.</p>}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {coaches.length === 0 && <p>No coaches match your filters.</p>}
+                </div>
               </div>
             </div>
-          </div>
-        </Card>
+          </Card>
         </div>
 
         {user?.role === 'player' && (
@@ -380,19 +408,50 @@ export default function Search() {
               </div>
             </Card>
 
-            <Card title="Available groups" subtitle="Join an existing playing circle.">
+            <Card title="Available groups" subtitle="Send a join request to an existing playing circle.">
               <div className="scroll-box">
-                {groups.map((group) => (
-                  <div className="list-item" key={group.id}>
-                    <strong>{group.name}</strong>
-                    <span>{group.sport_type} • {group.city} • {group.member_count}/{group.max_members}</span>
+                {availableGroups.map((group) => {
+                  const joinRequest = joinRequestsByGroupId[group.id];
+                  const isPending = joinRequest?.status === 'pending';
+                  const isRejected = joinRequest?.status === 'rejected';
+
+                  return (
+                    <div className="list-item" key={group.id}>
+                      <strong>{group.name}</strong>
+                      <span>{group.sport_type} • {group.city} • {group.member_count}/{group.max_members}</span>
+                      <div className="inline-actions">
+                        <Link className="text-link" to={`/groups/${group.id}`}>Open group</Link>
+                        {isPending ? (
+                          <Button variant="ghost" disabled>Pending</Button>
+                        ) : isRejected ? (
+                          <Button variant="ghost" disabled>Rejected</Button>
+                        ) : (
+                          <Button variant="ghost" onClick={() => handleJoinGroup(group.id)}>Request to join</Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {availableGroups.length === 0 && <p>No groups available right now.</p>}
+              </div>
+            </Card>
+
+            <Card title="My join requests" subtitle="Track requests waiting for approval from group creators.">
+              <div className="scroll-box">
+                {outstandingJoinRequests.map((joinRequest) => (
+                  <div className="list-item" key={joinRequest.id}>
+                    <strong>{joinRequest.name}</strong>
+                    <span>{joinRequest.sport_type} • {joinRequest.city} • {joinRequest.member_count}/{joinRequest.max_members}</span>
+                    <span>Status: {joinRequest.status === 'pending' ? 'Pending approval' : 'Rejected'}</span>
                     <div className="inline-actions">
-                      <Link className="text-link" to={`/groups/${group.id}`}>Open group</Link>
-                      <Button variant="ghost" onClick={() => handleJoinGroup(group.id)}>Join</Button>
+                      <Link className="text-link" to={`/groups/${joinRequest.group_id}`}>Open group</Link>
+                      {joinRequest.status === 'rejected' && (
+                        <Button variant="ghost" onClick={() => handleClearRejectedRequest(joinRequest.id)}>OK</Button>
+                      )}
                     </div>
                   </div>
                 ))}
-                {groups.length === 0 && <p>No groups available right now.</p>}
+                {outstandingJoinRequests.length === 0 && <p>No pending or rejected join requests.</p>}
               </div>
             </Card>
 
