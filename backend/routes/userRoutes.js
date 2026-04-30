@@ -1,10 +1,10 @@
 const express = require('express');
-const auth = require('../middleware/authMiddleware');
+const { requireAuth } = require('../middleware/accessControl');
 const { getMe, getMyOverview, updateMe } = require('../controllers/userController');
 
 const router = express.Router();
 
-router.use(auth);
+router.use(requireAuth);
 router.get('/me', getMe);
 router.put('/me', updateMe);
 router.get('/me/overview', getMyOverview);

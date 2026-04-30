@@ -5,7 +5,8 @@ import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { useAuth } from '../../context/AuthContext';
 import { createGroup, fetchGroups, fetchMyGroups, joinGroup } from '../../services/groupService';
-import { fetchCoachById, fetchCoaches, fetchCourtById, fetchCourts } from '../../services/searchService';
+import { fetchCoachById, fetchCoaches } from '../../services/coachService';
+import { fetchCourtById, fetchCourts } from '../../services/courtService';
 import { buildQuery, formatTime } from '../../utils/helpers';
 
 const skillLevelOptions = [
@@ -315,6 +316,7 @@ export default function Search() {
                             <strong>{weekdayLabels[Number(weekday)]}</strong>
                             <div className="slot-row">
                               {slots.map((slot) => (
+                                user?.role === 'player' ? (
                                 <Link
                                   className="slot-chip"
                                   key={`${slot.weekday}-${slot.start_time}-${slot.end_time}`}
@@ -328,6 +330,15 @@ export default function Search() {
                                 >
                                   {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
                                 </Link>
+                                ) : (
+                                  <span
+                                    className="slot-chip is-disabled"
+                                    key={`${slot.weekday}-${slot.start_time}-${slot.end_time}`}
+                                    title="Only players can create bookings."
+                                  >
+                                    {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                                  </span>
+                                )
                               ))}
                             </div>
                           </div>

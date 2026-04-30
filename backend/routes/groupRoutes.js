@@ -1,6 +1,5 @@
 const express = require('express');
-const auth = require('../middleware/authMiddleware');
-const requireRole = require('../middleware/roleMiddleware');
+const { requireAuth, requireRole } = require('../middleware/accessControl');
 const {
   createMyGroup,
   getAllGroups,
@@ -13,10 +12,10 @@ const {
 const router = express.Router();
 
 router.get('/', getAllGroups);
-router.get('/mine', auth, requireRole('player'), getMyGroups);
+router.get('/mine', requireAuth, requireRole('player'), getMyGroups);
 router.get('/:groupId', getGroupDetails);
-router.post('/', auth, requireRole('player'), createMyGroup);
-router.post('/:groupId/join', auth, requireRole('player'), joinExistingGroup);
-router.post('/:groupId/messages', auth, requireRole('player'), postGroupMessage);
+router.post('/', requireAuth, requireRole('player'), createMyGroup);
+router.post('/:groupId/join', requireAuth, requireRole('player'), joinExistingGroup);
+router.post('/:groupId/messages', requireAuth, requireRole('player'), postGroupMessage);
 
 module.exports = router;

@@ -1,6 +1,5 @@
 const express = require('express');
-const auth = require('../middleware/authMiddleware');
-const requireRole = require('../middleware/roleMiddleware');
+const { requireAuth, requireRole } = require('../middleware/accessControl');
 const {
   addMyCourtAvailability,
   createMyCourt,
@@ -15,12 +14,12 @@ const {
 const router = express.Router();
 
 router.get('/', listCourts);
-router.get('/owner/mine', auth, requireRole('owner'), getMyCourts);
-router.post('/', auth, requireRole('owner'), createMyCourt);
-router.put('/:courtId', auth, requireRole('owner'), updateMyCourt);
-router.delete('/:courtId', auth, requireRole('owner'), deleteMyCourt);
-router.delete('/:courtId/availability/:availabilityId', auth, requireRole('owner'), deleteMyCourtAvailability);
+router.get('/owner/mine', requireAuth, requireRole('owner'), getMyCourts);
+router.post('/', requireAuth, requireRole('owner'), createMyCourt);
+router.put('/:courtId', requireAuth, requireRole('owner'), updateMyCourt);
+router.delete('/:courtId', requireAuth, requireRole('owner'), deleteMyCourt);
+router.delete('/:courtId/availability/:availabilityId', requireAuth, requireRole('owner'), deleteMyCourtAvailability);
 router.get('/:courtId', getCourt);
-router.post('/:courtId/availability', auth, requireRole('owner'), addMyCourtAvailability);
+router.post('/:courtId/availability', requireAuth, requireRole('owner'), addMyCourtAvailability);
 
 module.exports = router;

@@ -9,7 +9,7 @@ import {
   fetchBookingAvailability,
   fetchMyBookings,
 } from '../../services/bookingService';
-import { fetchCourts } from '../../services/searchService';
+import { fetchCourts } from '../../services/courtService';
 import { buildQuery, formatDate, formatTime } from '../../utils/helpers';
 
 const weekdayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

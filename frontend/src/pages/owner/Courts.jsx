@@ -10,7 +10,7 @@ import {
   removeCourtAvailability,
   updateCourt,
 } from '../../services/courtService';
-import { fetchCourtById } from '../../services/searchService';
+import { fetchCourtById } from '../../services/courtService';
 
 const weekdayOptions = [
   { value: '0', label: 'Sunday' },
