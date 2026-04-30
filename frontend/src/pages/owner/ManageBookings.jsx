@@ -20,7 +20,7 @@ export default function ManageBookings() {
         {bookings.map((booking) => (
           <div className="list-item" key={booking.id}>
             <strong>{booking.court_name}</strong>
-            <span>Player: {booking.player_name}</span>
+            <span>{booking.player_name ? `Player: ${booking.player_name}` : 'Coach self-booked reservation'}</span>
             <span>{booking.coach_name ? `Coach: ${booking.coach_name}` : 'Court-only booking'}</span>
             <span>{formatDate(booking.booking_date)} • {formatTime(booking.start_time)} - {formatTime(booking.end_time)}</span>
           </div>

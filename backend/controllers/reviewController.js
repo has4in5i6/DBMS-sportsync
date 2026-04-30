@@ -1,6 +1,7 @@
 const {
   createReview,
   getReviewTargetsForUser,
+  hasCoachBookedCourt,
   getReviews,
   hasUserBookedCoach,
   hasUserBookedCourt,
@@ -18,6 +19,7 @@ const listReviews = async (req, res, next) => {
 const createMyReview = async (req, res, next) => {
   try {
     const { coachId, courtId, rating, comment } = req.body;
+    const { id: userId, role } = req.session.user;
 
     if (!rating || (!coachId && !courtId)) {
       return res.status(400).json({ message: 'A rating and one review target are required.' });
@@ -28,8 +30,12 @@ const createMyReview = async (req, res, next) => {
     }
 
     if (coachId) {
+      if (role === 'coach') {
+        return res.status(403).json({ message: 'Coaches can only review courts.' });
+      }
+
       const hasBookedCoach = await hasUserBookedCoach({
-        userId: req.session.user.id,
+        userId,
         coachId,
       });
 
@@ -39,10 +45,9 @@ const createMyReview = async (req, res, next) => {
     }
 
     if (courtId) {
-      const hasBookedCourt = await hasUserBookedCourt({
-        userId: req.session.user.id,
-        courtId,
-      });
+      const hasBookedCourt = role === 'coach'
+        ? await hasCoachBookedCourt({ coachId: userId, courtId })
+        : await hasUserBookedCourt({ userId, courtId });
 
       if (!hasBookedCourt) {
         return res.status(403).json({ message: 'You can only review courts you have booked.' });
@@ -50,7 +55,7 @@ const createMyReview = async (req, res, next) => {
     }
 
     const review = await createReview({
-      reviewerId: req.session.user.id,
+      reviewerId: userId,
       coachId,
       courtId,
       rating,
@@ -65,7 +70,7 @@ const createMyReview = async (req, res, next) => {
 
 const getMyReviewTargets = async (req, res, next) => {
   try {
-    const targets = await getReviewTargetsForUser(req.session.user.id);
+    const targets = await getReviewTargetsForUser(req.session.user.id, req.session.user.role);
     return res.json(targets);
   } catch (error) {
     return next(error);

@@ -53,7 +53,7 @@ export default function App() {
         <Route
           path="/booking"
           element={(
-            <ProtectedRoute roles={['player']}>
+            <ProtectedRoute roles={['player', 'coach']}>
               <Booking />
             </ProtectedRoute>
           )}

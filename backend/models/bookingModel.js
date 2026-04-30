@@ -59,7 +59,7 @@ const createBooking = async ({
     )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING *`,
-    [playerId, courtId, coachId || null, bookingDate, startTime, endTime, totalPrice, notes || ''],
+    [playerId || null, courtId, coachId || null, bookingDate, startTime, endTime, totalPrice, notes || ''],
   );
 
   return result.rows[0];
@@ -83,7 +83,9 @@ const createBookingWithTransaction = async ({
     // Lock the resources involved so overlapping bookings on the same court, player,
     // or coach are serialized before we re-check conflicts and insert.
     await client.query('SELECT id FROM courts WHERE id = $1 FOR UPDATE', [courtId]);
-    await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [playerId]);
+    if (playerId) {
+      await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [playerId]);
+    }
 
     if (coachId) {
       await client.query('SELECT user_id FROM coach_profiles WHERE user_id = $1 FOR UPDATE', [coachId]);
@@ -118,7 +120,7 @@ const createBookingWithTransaction = async ({
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *`,
-      [playerId, courtId, coachId || null, bookingDate, startTime, endTime, totalPrice, notes || ''],
+      [playerId || null, courtId, coachId || null, bookingDate, startTime, endTime, totalPrice, notes || ''],
     );
 
     await client.query('COMMIT');
@@ -134,7 +136,7 @@ const createBookingWithTransaction = async ({
 const getPlayerBookings = async (playerId) => {
   const result = await db.query(
     `SELECT
-      b.*,
+     b.*,
       c.name AS court_name,
       c.location AS court_location,
       coach.full_name AS coach_name
@@ -142,6 +144,7 @@ const getPlayerBookings = async (playerId) => {
      JOIN courts c ON c.id = b.court_id
      LEFT JOIN users coach ON coach.id = b.coach_id
      WHERE b.player_id = $1
+       AND b.status = 'confirmed'
      ORDER BY b.booking_date ASC, b.start_time ASC`,
     [playerId],
   );
@@ -158,7 +161,7 @@ const getOwnerBookings = async (ownerId) => {
       coach.full_name AS coach_name
      FROM bookings b
      JOIN courts c ON c.id = b.court_id
-     JOIN users p ON p.id = b.player_id
+     LEFT JOIN users p ON p.id = b.player_id
      LEFT JOIN users coach ON coach.id = b.coach_id
      WHERE c.owner_id = $1
      ORDER BY b.booking_date ASC, b.start_time ASC`,
@@ -171,13 +174,14 @@ const getOwnerBookings = async (ownerId) => {
 const getCoachBookings = async (coachId) => {
   const result = await db.query(
     `SELECT
-      b.*,
+     b.*,
       c.name AS court_name,
       p.full_name AS player_name
      FROM bookings b
      JOIN courts c ON c.id = b.court_id
-     JOIN users p ON p.id = b.player_id
+     LEFT JOIN users p ON p.id = b.player_id
      WHERE b.coach_id = $1
+       AND b.status = 'confirmed'
      ORDER BY b.booking_date ASC, b.start_time ASC`,
     [coachId],
   );
@@ -227,6 +231,17 @@ const cancelBooking = async (bookingId, userId, role) => {
 
   if (role === 'player') {
     query += ' AND player_id = $2';
+    params.push(userId);
+  } else if (role === 'coach') {
+    query += ' AND coach_id = $2 AND player_id IS NULL';
+    params.push(userId);
+  } else if (role === 'owner') {
+    query += ` AND EXISTS (
+      SELECT 1
+      FROM courts c
+      WHERE c.id = bookings.court_id
+        AND c.owner_id = $2
+    )`;
     params.push(userId);
   }
 

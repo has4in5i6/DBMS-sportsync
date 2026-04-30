@@ -41,11 +41,11 @@ export default function Dashboard() {
           <Link className="cta-link primary inline-cta" to="/coach/schedule">Manage schedule</Link>
         </Card>
 
-        <Card title="Upcoming sessions" subtitle="Bookings assigned to you.">
-          {data.bookings.length === 0 && <p>No coaching sessions booked yet.</p>}
+        <Card title="Upcoming sessions" subtitle="Bookings assigned to you and court reservations you made.">
+          {data.bookings.length === 0 && <p>No coaching sessions or court reservations yet.</p>}
           {data.bookings.map((booking) => (
             <div className="list-item" key={booking.id}>
-              <strong>{booking.player_name}</strong>
+              <strong>{booking.player_name || 'Self-booked court'}</strong>
               <span>{booking.court_name}</span>
               <span>{formatDate(booking.booking_date)} • {formatTime(booking.start_time)} - {formatTime(booking.end_time)}</span>
             </div>

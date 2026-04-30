@@ -12,11 +12,11 @@ const {
 const router = express.Router();
 
 router.use(requireAuth);
-router.get('/availability', requireRole('player'), getBookingAvailability);
-router.get('/mine', requireRole('player'), getMyBookings);
+router.get('/availability', requireRole('player', 'coach'), getBookingAvailability);
+router.get('/mine', requireRole('player', 'coach'), getMyBookings);
 router.get('/owner', requireRole('owner'), getOwnerManagedBookings);
 router.get('/coach', requireRole('coach'), getCoachManagedBookings);
-router.post('/', requireRole('player'), createNewBooking);
+router.post('/', requireRole('player', 'coach'), createNewBooking);
 router.patch('/:bookingId/cancel', cancelExistingBooking);
 
 module.exports = router;

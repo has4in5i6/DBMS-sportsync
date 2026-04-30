@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import Input from '../../components/Input';
+import { useAuth } from '../../context/AuthContext';
 import {
   cancelBooking,
   createBooking,
@@ -10,6 +11,7 @@ import {
   fetchMyBookings,
 } from '../../services/bookingService';
 import { fetchCourts } from '../../services/courtService';
+import { createReview, fetchMyReviewTargets } from '../../services/reviewService';
 import { buildQuery, formatDate, formatTime } from '../../utils/helpers';
 
 const weekdayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -35,7 +37,9 @@ const getNextDateForWeekday = (weekday) => {
 };
 
 export default function Booking() {
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
+  const isCoachView = user?.role === 'coach';
   const [bookingPref] = useState(() => ({
     courtId: searchParams.get('courtId') || '',
     coachId: searchParams.get('coachId') || '',
@@ -49,6 +53,16 @@ export default function Booking() {
   const [availability, setAvailability] = useState({ availableWeekdays: [], availableCourtSlots: [], coaches: [] });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [reviewMessage, setReviewMessage] = useState('');
+  const [reviewError, setReviewError] = useState('');
+  const [reviewTargetsLoaded, setReviewTargetsLoaded] = useState(false);
+  const [reviewTargets, setReviewTargets] = useState({ courts: [], coaches: [] });
+  const [reviewForm, setReviewForm] = useState({
+    reviewType: 'court',
+    targetId: '',
+    rating: 5,
+    comment: '',
+  });
   const [form, setForm] = useState({
     courtId: bookingPref.courtId,
     courtSlot: '',
@@ -62,12 +76,18 @@ export default function Booking() {
   const loadPage = async () => {
     try {
       setError('');
-      const [courtData, bookingData] = await Promise.all([
+      const [courtData, bookingData, reviewTargetData] = await Promise.all([
         fetchCourts(),
         fetchMyBookings(),
+        fetchMyReviewTargets(),
       ]);
       setCourts(courtData.courts);
       setBookings(bookingData.bookings);
+      setReviewTargets({
+        courts: reviewTargetData.courts || [],
+        coaches: reviewTargetData.coaches || [],
+      });
+      setReviewTargetsLoaded(true);
       if (!form.courtId && courtData.courts[0]) {
         const preferredCourt = bookingPref.sportType
           ? courtData.courts.find((court) => court.sport_type === bookingPref.sportType)
@@ -76,6 +96,8 @@ export default function Booking() {
       }
     } catch (err) {
       setError(err.message);
+      setReviewTargets({ courts: [], coaches: [] });
+      setReviewTargetsLoaded(true);
     }
   };
 
@@ -117,7 +139,7 @@ export default function Booking() {
           );
 
           const firstSlotCandidate = selectedPreferredSlot
-            || ((data.coaches || []).length > 0
+            || (!isCoachView && (data.coaches || []).length > 0
               ? (data.availableCourtSlots || []).find((slot) => coachSlotKeys.has(`${slot.weekday}-${slot.startTime}-${slot.endTime}`))
               : null)
             || data.availableCourtSlots[0];
@@ -134,7 +156,7 @@ export default function Booking() {
           setForm((current) => ({
             ...current,
             courtSlot: slotValue,
-            coachId: matchingPreferredCoach
+            coachId: !isCoachView && matchingPreferredCoach
               ? String(matchingPreferredCoach.id)
               : '',
             startTime: firstSlot.startTime,
@@ -156,7 +178,7 @@ export default function Booking() {
     };
 
     loadAvailability();
-  }, [form.courtId, form.bookingDate]);
+  }, [form.courtId, form.bookingDate, isCoachView]);
 
   const availableCoachesForSelectedSlot = availability.coaches.filter((coach) => (
     coach.availableSlots.some((slot) => (
@@ -205,9 +227,9 @@ export default function Booking() {
       await createBooking({
         ...form,
         courtId: Number(form.courtId),
-        coachId: form.coachId ? Number(form.coachId) : null,
+        coachId: isCoachView ? null : (form.coachId ? Number(form.coachId) : null),
       });
-      setMessage('Booking created successfully.');
+      setMessage(isCoachView ? 'Court booked successfully.' : 'Booking created successfully.');
       setForm((current) => ({
         ...current,
         courtSlot: '',
@@ -232,6 +254,43 @@ export default function Booking() {
       setError(err.message);
     }
   };
+
+  const handleReviewChange = (event) => {
+    setReviewForm((current) => ({
+      ...current,
+      [event.target.name]: event.target.value,
+      ...(event.target.name === 'reviewType' ? { targetId: '' } : {}),
+    }));
+  };
+
+  const handleReviewSubmit = async (event) => {
+    event.preventDefault();
+    try {
+      await createReview({
+        rating: Number(reviewForm.rating),
+        comment: reviewForm.comment,
+        coachId: !isCoachView && reviewForm.reviewType === 'coach' ? Number(reviewForm.targetId) : null,
+        courtId: reviewForm.reviewType === 'court' ? Number(reviewForm.targetId) : null,
+      });
+      setReviewMessage('Review submitted successfully.');
+      setReviewError('');
+      setReviewForm((current) => ({ ...current, targetId: '', comment: '' }));
+    } catch (err) {
+      setReviewError(err.message);
+      setReviewMessage('');
+    }
+  };
+
+  const availableReviewTargets = reviewForm.reviewType === 'coach'
+    ? reviewTargets.coaches
+    : reviewTargets.courts;
+  const noTargetsMessage = !reviewTargetsLoaded
+    ? 'Loading your review options...'
+    : (isCoachView
+      ? 'No courts from your completed bookings are available to review yet.'
+      : (reviewForm.reviewType === 'coach'
+      ? 'No coaches from your booked sessions are available to review yet.'
+      : 'No courts from your booked sessions are available to review yet.'));
 
   return (
     <div className="page-shell booking-shell">
@@ -258,7 +317,12 @@ export default function Booking() {
           {courts.length === 0 && <p>No courts are available right now.</p>}
         </Card>
 
-        <Card title="Create booking" subtitle="Choose your selected court, optional coach, and session time.">
+        <Card
+          title={isCoachView ? 'Book a court' : 'Create booking'}
+          subtitle={isCoachView
+            ? 'Choose your court and a slot that also fits your own availability.'
+            : 'Choose your selected court, optional coach, and session time.'}
+        >
           <div className="scroll-box booking-form-scroll">
             <form className="grid-form" onSubmit={handleSubmit}>
               <Input
@@ -294,51 +358,115 @@ export default function Booking() {
                 ]}
                 required
               />
-              <Input
-                label="Available coach"
-                as="select"
-                name="coachId"
-                value={form.coachId}
-                onChange={handleChange}
-                options={[
-                  {
-                    value: '',
-                    label: form.courtSlot ? 'No coach' : 'Choose a court slot first',
-                  },
-                  ...availableCoachesForSelectedSlot.map((coach) => ({
-                    value: String(coach.id),
-                    label: `${coach.full_name} - ${coach.primary_sport} • ${formatTime(form.startTime)} - ${formatTime(form.endTime)}`,
-                  })),
-                ]}
-              />
+              {!isCoachView && (
+                <Input
+                  label="Available coach"
+                  as="select"
+                  name="coachId"
+                  value={form.coachId}
+                  onChange={handleChange}
+                  options={[
+                    {
+                      value: '',
+                      label: form.courtSlot ? 'No coach' : 'Choose a court slot first',
+                    },
+                    ...availableCoachesForSelectedSlot.map((coach) => ({
+                      value: String(coach.id),
+                      label: `${coach.full_name} - ${coach.primary_sport} • ${formatTime(form.startTime)} - ${formatTime(form.endTime)}`,
+                    })),
+                  ]}
+                />
+              )}
               <Input label="Start time" type="time" name="startTime" value={form.startTime} readOnly required />
               <Input label="End time" type="time" name="endTime" value={form.endTime} readOnly required />
               <Input label="Notes" as="textarea" name="notes" value={form.notes} onChange={handleChange} rows="4" />
               <p className="group-note">
-                Pick a date first and the form will show only bookable court slots and matching coaches for that day.
+                {isCoachView
+                  ? 'Pick a date first and the form will show only court slots that fit both the court schedule and your own availability.'
+                  : 'Pick a date first and the form will show only bookable court slots and matching coaches for that day.'}
                 {availability.availableWeekdays.length > 0 && ` This court operates on ${availability.availableWeekdays.map((day) => weekdayLabels[day]).join(', ')}.`}
-                {(bookingPref.courtId || bookingPref.coachId) && ' This page was prefilled from a slot you selected in search.'}
+                {!isCoachView && (bookingPref.courtId || bookingPref.coachId) && ' This page was prefilled from a slot you selected in search.'}
               </p>
               {message && <p className="form-success">{message}</p>}
               {error && <p className="form-error">{error}</p>}
-              <Button type="submit">Book now</Button>
+              <Button type="submit">{isCoachView ? 'Reserve court' : 'Book now'}</Button>
             </form>
           </div>
         </Card>
 
-        <Card title="My bookings" subtitle="Sessions you have reserved so far.">
+        <Card
+          title="My bookings"
+          subtitle={isCoachView
+            ? 'Your active coaching sessions and self-booked court reservations.'
+            : 'Your active bookings and upcoming sessions.'}
+        >
           <div className="scroll-box booking-form-scroll">
             {bookings.map((booking) => (
               <div className="list-item" key={booking.id}>
                 <strong>{booking.court_name}</strong>
                 <span>{formatDate(booking.booking_date)} • {formatTime(booking.start_time)} - {formatTime(booking.end_time)}</span>
-                <span>{booking.coach_name ? `Coach: ${booking.coach_name}` : 'Court-only booking'} • Status: {booking.status}</span>
-                {booking.status === 'confirmed' && (
+                <span>
+                  {isCoachView
+                    ? (booking.player_name ? `Player: ${booking.player_name}` : 'Self-booked court')
+                    : (booking.coach_name ? `Coach: ${booking.coach_name}` : 'Court-only booking')}
+                  {' • '}
+                  Status: {booking.status}
+                </span>
+                {booking.status === 'confirmed' && (!isCoachView || !booking.player_name) && (
                   <Button variant="ghost" onClick={() => handleCancel(booking.id)}>Cancel</Button>
                 )}
               </div>
             ))}
             {bookings.length === 0 && <p>No bookings yet.</p>}
+          </div>
+        </Card>
+
+        <Card
+          title="Reviews"
+          subtitle={isCoachView
+            ? 'Review courts only after your session has finished.'
+            : 'Review courts or coaches only after the booked session has finished.'}
+        >
+          <div className="scroll-box booking-form-scroll">
+            <form className="grid-form" onSubmit={handleReviewSubmit}>
+              {!isCoachView && (
+                <Input
+                  label="Review type"
+                  as="select"
+                  name="reviewType"
+                  value={reviewForm.reviewType}
+                  onChange={handleReviewChange}
+                  options={[
+                    { value: 'coach', label: 'Coach' },
+                    { value: 'court', label: 'Court' },
+                  ]}
+                />
+              )}
+              <Input
+                label="Target"
+                as="select"
+                name="targetId"
+                value={reviewForm.targetId}
+                onChange={handleReviewChange}
+                options={[
+                  { value: '', label: 'Select a target' },
+                  ...availableReviewTargets.map((target) => ({
+                    value: String(target.id),
+                    label: target.full_name || target.name,
+                  })),
+                ]}
+                required
+              />
+              <Input label="Rating" type="number" min="1" max="5" name="rating" value={reviewForm.rating} onChange={handleReviewChange} />
+              <Input label="Comment" as="textarea" name="comment" value={reviewForm.comment} onChange={handleReviewChange} rows="3" />
+              {availableReviewTargets.length === 0 && <p className="group-note">{noTargetsMessage}</p>}
+              <p className="group-note">
+                Reviews unlock only after the session end time has passed. Cancelled bookings do not appear here.
+              </p>
+              {reviewMessage && <p className="form-success">{reviewMessage}</p>}
+              {reviewError && <p className="form-error">{reviewError}</p>}
+              <Button type="submit">{isCoachView ? 'Submit court review' : 'Submit review'}</Button>
+            </form>
           </div>
         </Card>
       </div>

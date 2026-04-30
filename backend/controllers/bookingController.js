@@ -58,6 +58,8 @@ const buildBookableSlots = (availabilityRows, bookingRows, weekday) => {
   return generatedSlots;
 };
 
+const getSlotKey = (slot) => `${slot.weekday}-${slot.startTime}-${slot.endTime}`;
+
 const validateAvailability = async ({ bookingDate, startTime, endTime, courtId, coachId }) => {
   const weekday = weekdayFromDate(bookingDate);
   if (weekday === null) {
@@ -141,9 +143,27 @@ const getBookingAvailability = async (req, res, next) => {
     ]);
 
     const availableCourtSlots = buildBookableSlots(courtAvailability, courtBookings, weekday);
-    const courtSlotKeys = new Set(
-      availableCourtSlots.map((slot) => `${slot.weekday}-${slot.startTime}-${slot.endTime}`),
-    );
+    const courtSlotKeys = new Set(availableCourtSlots.map(getSlotKey));
+
+    if (req.session.user.role === 'coach') {
+      const ownCoachAvailability = await getCoachAvailability(req.session.user.id);
+      const ownCoachBookings = await getCoachBookingsForDate(bookingDate, [req.session.user.id]);
+      const availableCoachSlots = buildBookableSlots(
+        ownCoachAvailability,
+        ownCoachBookings,
+        weekday,
+      ).filter((slot) => courtSlotKeys.has(getSlotKey(slot)));
+
+      return res.json({
+        court,
+        bookingDate,
+        availableWeekdays: [...new Set(courtAvailability.map((slot) => Number(slot.weekday)))]
+          .filter((value) => !Number.isNaN(value))
+          .sort((a, b) => a - b),
+        availableCourtSlots: availableCoachSlots,
+        coaches: [],
+      });
+    }
 
     const coachIds = matchingCoaches.map((coach) => coach.id);
     const [coachAvailabilityRows, coachBookings] = await Promise.all([
@@ -162,7 +182,7 @@ const getBookingAvailability = async (req, res, next) => {
         coachAvailabilityRows[index],
         bookingsByCoach[coach.id] || [],
         weekday,
-      ).filter((slot) => courtSlotKeys.has(`${slot.weekday}-${slot.startTime}-${slot.endTime}`));
+      ).filter((slot) => courtSlotKeys.has(getSlotKey(slot)));
 
       return {
         ...coach,
@@ -188,8 +208,8 @@ const getBookingAvailability = async (req, res, next) => {
 
 const createNewBooking = async (req, res, next) => {
   try {
-    if (req.session.user.role !== 'player') {
-      return res.status(403).json({ message: 'Only players can create bookings.' });
+    if (!['player', 'coach'].includes(req.session.user.role)) {
+      return res.status(403).json({ message: 'Only players and coaches can create bookings.' });
     }
 
     const { courtId, coachId, bookingDate, startTime, endTime, notes } = req.body;
@@ -210,9 +230,13 @@ const createNewBooking = async (req, res, next) => {
       return res.status(404).json({ message: 'Court not found.' });
     }
 
+    const effectiveCoachId = req.session.user.role === 'coach'
+      ? req.session.user.id
+      : (coachId || null);
+
     let coach = null;
-    if (coachId) {
-      coach = await getCoachById(coachId);
+    if (effectiveCoachId) {
+      coach = await getCoachById(effectiveCoachId);
       if (!coach) {
         return res.status(404).json({ message: 'Coach not found.' });
       }
@@ -226,18 +250,19 @@ const createNewBooking = async (req, res, next) => {
       startTime,
       endTime,
       courtId,
-      coachId,
+      coachId: effectiveCoachId,
     });
     if (availabilityError) {
       return res.status(409).json({ message: availabilityError });
     }
 
     const duration = durationInHours(startTime, endTime);
-    const totalPrice = Number(court.price_per_hour) * duration + (coach ? Number(coach.hourly_rate) * duration : 0);
+    const totalPrice = Number(court.price_per_hour) * duration
+      + (req.session.user.role === 'player' && coach ? Number(coach.hourly_rate) * duration : 0);
     const booking = await createBookingWithTransaction({
-      playerId: req.session.user.id,
+      playerId: req.session.user.role === 'player' ? req.session.user.id : null,
       courtId,
-      coachId,
+      coachId: effectiveCoachId,
       bookingDate,
       startTime,
       endTime,
@@ -253,7 +278,9 @@ const createNewBooking = async (req, res, next) => {
 
 const getMyBookings = async (req, res, next) => {
   try {
-    const bookings = await getPlayerBookings(req.session.user.id);
+    const bookings = req.session.user.role === 'coach'
+      ? await getCoachBookings(req.session.user.id)
+      : await getPlayerBookings(req.session.user.id);
     return res.json({ bookings });
   } catch (error) {
     return next(error);
