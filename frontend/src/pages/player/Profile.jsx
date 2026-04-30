@@ -3,8 +3,7 @@ import Button from '../../components/Button';
 import Card from '../../components/Card';
 import Input from '../../components/Input';
 import { useAuth } from '../../context/AuthContext';
-import { createReview } from '../../services/reviewService';
-import { fetchCoaches, fetchCourts } from '../../services/searchService';
+import { createReview, fetchMyReviewTargets } from '../../services/reviewService';
 import { fetchMe, updateMe } from '../../services/userService';
 
 export default function Profile() {
@@ -14,6 +13,7 @@ export default function Profile() {
   const [coaches, setCoaches] = useState([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [reviewTargetsLoaded, setReviewTargetsLoaded] = useState(false);
   const [reviewForm, setReviewForm] = useState({
     reviewType: 'coach',
     targetId: '',
@@ -23,15 +23,27 @@ export default function Profile() {
 
   const loadPage = async () => {
     try {
-      const [profileData, courtData, coachData] = await Promise.all([
-        fetchMe(),
-        fetchCourts(),
-        fetchCoaches(),
-      ]);
-
+      setError('');
+      const profileData = await fetchMe();
       setProfile(profileData.user);
-      setCourts(courtData.courts);
-      setCoaches(coachData.coaches);
+
+      if (user?.role === 'player') {
+        try {
+          const reviewTargetData = await fetchMyReviewTargets();
+          setCourts(reviewTargetData.courts || []);
+          setCoaches(reviewTargetData.coaches || []);
+        } catch (reviewErr) {
+          setCourts([]);
+          setCoaches([]);
+          console.warn('Unable to load review targets:', reviewErr.message);
+        } finally {
+          setReviewTargetsLoaded(true);
+        }
+      } else {
+        setCourts([]);
+        setCoaches([]);
+        setReviewTargetsLoaded(true);
+      }
     } catch (err) {
       setError(err.message);
     }
@@ -63,13 +75,18 @@ export default function Profile() {
       setProfile(response.user);
       setUser((current) => ({ ...current, fullName: response.user.full_name }));
       setMessage('Profile updated successfully.');
+      setError('');
     } catch (err) {
       setError(err.message);
     }
   };
 
   const handleReviewChange = (event) => {
-    setReviewForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+    setReviewForm((current) => ({
+      ...current,
+      [event.target.name]: event.target.value,
+      ...(event.target.name === 'reviewType' ? { targetId: '' } : {}),
+    }));
   };
 
   const submitReview = async (event) => {
@@ -82,6 +99,7 @@ export default function Profile() {
         courtId: reviewForm.reviewType === 'court' ? Number(reviewForm.targetId) : null,
       });
       setMessage('Review submitted successfully.');
+      setError('');
       setReviewForm((current) => ({ ...current, targetId: '', comment: '' }));
     } catch (err) {
       setError(err.message);
@@ -89,9 +107,18 @@ export default function Profile() {
   };
 
   const availableTargets = reviewForm.reviewType === 'coach' ? coaches : courts;
+  const noTargetsMessage = !reviewTargetsLoaded
+    ? 'Loading your review options...'
+    : (reviewForm.reviewType === 'coach'
+      ? 'No coaches from your booked sessions are available to review yet.'
+      : 'No courts from your booked sessions are available to review yet.');
 
   if (!profile) {
-    return <div className="page-shell"><p>Loading profile...</p></div>;
+    return (
+      <div className="page-shell">
+        <p className={error ? 'form-error' : ''}>{error || 'Loading profile...'}</p>
+      </div>
+    );
   }
 
   return (
@@ -149,6 +176,7 @@ export default function Profile() {
             />
             <Input label="Rating" type="number" min="1" max="5" name="rating" value={reviewForm.rating} onChange={handleReviewChange} />
             <Input label="Comment" as="textarea" name="comment" value={reviewForm.comment} onChange={handleReviewChange} rows="3" />
+            {availableTargets.length === 0 && <p className="group-note">{noTargetsMessage}</p>}
             <Button type="submit">Submit review</Button>
           </form>
         </Card>

@@ -80,13 +80,44 @@ const getCoachAvailability = async (coachId) => {
 };
 
 const addCoachAvailability = async (coachId, slot) => {
-  const result = await db.query(
-    `INSERT INTO coach_availability (coach_id, weekday, start_time, end_time)
-     VALUES ($1, $2, $3, $4)
-     RETURNING *`,
-    [coachId, slot.weekday, slot.startTime, slot.endTime],
-  );
-  return result.rows[0];
+  const client = await db.connect();
+
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT user_id FROM coach_profiles WHERE user_id = $1 FOR UPDATE', [coachId]);
+
+    const duplicateResult = await client.query(
+      `SELECT 1
+       FROM coach_availability
+       WHERE coach_id = $1
+         AND weekday = $2
+         AND start_time = $3
+         AND end_time = $4
+       LIMIT 1`,
+      [coachId, slot.weekday, slot.startTime, slot.endTime],
+    );
+
+    if (duplicateResult.rowCount > 0) {
+      const error = new Error('This availability slot already exists.');
+      error.status = 409;
+      throw error;
+    }
+
+    const result = await client.query(
+      `INSERT INTO coach_availability (coach_id, weekday, start_time, end_time)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [coachId, slot.weekday, slot.startTime, slot.endTime],
+    );
+
+    await client.query('COMMIT');
+    return result.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 const deleteCoachAvailability = async (coachId, availabilityId) => {

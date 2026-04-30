@@ -15,6 +15,15 @@ const weekdayOptions = [
   { value: 6, label: 'Saturday' },
 ];
 
+const formatLocalDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getCurrentWeekday = () => new Date().getDay();
+
 const getNextDateForWeekday = (weekday) => {
   if (weekday === null || weekday === undefined || Number.isNaN(Number(weekday))) {
     return '';
@@ -24,12 +33,12 @@ const getNextDateForWeekday = (weekday) => {
   current.setHours(0, 0, 0, 0);
   const distance = (Number(weekday) - current.getDay() + 7) % 7;
   current.setDate(current.getDate() + distance);
-  return current.toISOString().slice(0, 10);
+  return formatLocalDate(current);
 };
 
 export default function Schedule() {
   const [data, setData] = useState(null);
-  const [form, setForm] = useState({ weekday: 1, startTime: '18:00', endTime: '20:00' });
+  const [form, setForm] = useState({ weekday: getCurrentWeekday(), startTime: '18:00', endTime: '20:00' });
   const [error, setError] = useState('');
 
   const load = async () => {
@@ -52,6 +61,7 @@ export default function Schedule() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
+      setError('');
       await addCoachAvailability({
         weekday: Number(form.weekday),
         startTime: form.startTime,

@@ -67,11 +67,29 @@ const weekdayFromDate = (dateString) => {
   return Number.isNaN(day) ? null : day;
 };
 
+const todayDateString = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const isPastDate = (dateString) => {
+  if (!dateString || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateString))) {
+    return false;
+  }
+
+  return dateString < todayDateString();
+};
+
 module.exports = {
   durationInHours,
+  isPastDate,
   minutesToTime,
   overlaps,
   slotContains,
+  todayDateString,
   toMinutes,
   weekdayFromDate,
 };

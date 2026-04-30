@@ -2,16 +2,16 @@ const { getCoachAvailability, getCoachById, searchCoaches } = require('../models
 const { getCourtAvailability, getCourtById } = require('../models/courtModel');
 const {
   cancelBooking,
-  createBooking,
+  createBookingWithTransaction,
   getCoachBookingsForDate,
   getCoachBookings,
   getCourtBookingsForDate,
   getOwnerBookings,
   getPlayerBookings,
-  listConflictingBookings,
 } = require('../models/bookingModel');
 const {
   durationInHours,
+  isPastDate,
   minutesToTime,
   overlaps,
   slotContains,
@@ -120,6 +120,10 @@ const getBookingAvailability = async (req, res, next) => {
       return res.status(400).json({ message: 'Court and booking date are required.' });
     }
 
+    if (isPastDate(bookingDate)) {
+      return res.status(400).json({ message: 'Booking date cannot be in the past.' });
+    }
+
     const court = await getCourtById(courtId);
     if (!court) {
       return res.status(404).json({ message: 'Court not found.' });
@@ -193,6 +197,10 @@ const createNewBooking = async (req, res, next) => {
       return res.status(400).json({ message: 'Court, date, start time, and end time are required.' });
     }
 
+    if (isPastDate(bookingDate)) {
+      return res.status(400).json({ message: 'Booking date cannot be in the past.' });
+    }
+
     if (toMinutes(endTime) <= toMinutes(startTime)) {
       return res.status(400).json({ message: 'End time must be after start time.' });
     }
@@ -224,22 +232,9 @@ const createNewBooking = async (req, res, next) => {
       return res.status(409).json({ message: availabilityError });
     }
 
-    const conflicts = await listConflictingBookings({
-      bookingDate,
-      startTime,
-      endTime,
-      courtId,
-      coachId,
-      playerId: req.session.user.id,
-    });
-
-    if (conflicts.length > 0) {
-      return res.status(409).json({ message: 'Booking conflicts with an existing court, coach, or player schedule.' });
-    }
-
     const duration = durationInHours(startTime, endTime);
     const totalPrice = Number(court.price_per_hour) * duration + (coach ? Number(coach.hourly_rate) * duration : 0);
-    const booking = await createBooking({
+    const booking = await createBookingWithTransaction({
       playerId: req.session.user.id,
       courtId,
       coachId,

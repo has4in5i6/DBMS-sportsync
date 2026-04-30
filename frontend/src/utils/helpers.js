@@ -3,9 +3,16 @@ export const formatDate = (value) => {
     return '-';
   }
 
+  const formatParts = (date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   if (value instanceof Date) {
     const time = value.getTime();
-    return Number.isNaN(time) ? '-' : value.toLocaleDateString();
+    return Number.isNaN(time) ? '-' : formatParts(value);
   }
 
   const raw = String(value).trim();
@@ -13,7 +20,7 @@ export const formatDate = (value) => {
     ? new Date(`${raw}T00:00:00Z`)
     : new Date(raw);
 
-  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+  return Number.isNaN(date.getTime()) ? '-' : formatParts(date);
 };
 
 export const formatTime = (value) => value?.slice(0, 5) || '-';

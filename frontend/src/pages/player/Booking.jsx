@@ -13,6 +13,15 @@ import { fetchCourts } from '../../services/searchService';
 import { buildQuery, formatDate, formatTime } from '../../utils/helpers';
 
 const weekdayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const formatLocalDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const todayDate = () => formatLocalDate(new Date());
+
 const getNextDateForWeekday = (weekday) => {
   if (weekday === null || weekday === undefined || Number.isNaN(Number(weekday))) {
     return '';
@@ -22,7 +31,7 @@ const getNextDateForWeekday = (weekday) => {
   current.setHours(0, 0, 0, 0);
   const distance = (Number(weekday) - current.getDay() + 7) % 7;
   current.setDate(current.getDate() + distance);
-  return current.toISOString().slice(0, 10);
+  return formatLocalDate(current);
 };
 
 export default function Booking() {
@@ -115,20 +124,19 @@ export default function Booking() {
 
           const firstSlot = firstSlotCandidate || data.availableCourtSlots[0];
           const slotValue = `${firstSlot.weekday}-${firstSlot.startTime}-${firstSlot.endTime}`;
-          const matchingPreferredCoach = (data.coaches || []).find((coach) => (
-            String(coach.id) === form.coachId
-            && coach.availableSlots.some((slot) => `${slot.weekday}-${slot.startTime}-${slot.endTime}` === slotValue)
-          ));
-          const firstCoachForSlot = (data.coaches || []).find((coach) => (
-            coach.availableSlots.some((slot) => `${slot.weekday}-${slot.startTime}-${slot.endTime}` === slotValue)
-          ));
+          const matchingPreferredCoach = bookingPref.coachId
+            ? (data.coaches || []).find((coach) => (
+              String(coach.id) === bookingPref.coachId
+              && coach.availableSlots.some((slot) => `${slot.weekday}-${slot.startTime}-${slot.endTime}` === slotValue)
+            ))
+            : null;
 
           setForm((current) => ({
             ...current,
             courtSlot: slotValue,
             coachId: matchingPreferredCoach
               ? String(matchingPreferredCoach.id)
-              : (firstCoachForSlot ? String(firstCoachForSlot.id) : ''),
+              : '',
             startTime: firstSlot.startTime,
             endTime: firstSlot.endTime,
           }));
@@ -180,7 +188,7 @@ export default function Booking() {
       ...current,
       courtId: String(courtId),
       courtSlot: '',
-      coachId: bookingPref.coachId && !current.courtId ? bookingPref.coachId : '',
+      coachId: '',
       bookingDate: current.bookingDate || getNextDateForWeekday(bookingPref.weekday),
       startTime: '',
       endTime: '',
@@ -265,7 +273,7 @@ export default function Booking() {
                 ]}
                 required
               />
-              <Input label="Booking date" type="date" name="bookingDate" value={form.bookingDate} onChange={handleChange} required />
+              <Input label="Booking date" type="date" min={todayDate()} name="bookingDate" value={form.bookingDate} onChange={handleChange} required />
               <Input
                 label="Available court slot"
                 as="select"

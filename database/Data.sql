@@ -26,6 +26,78 @@ INSERT INTO users (
   'Usually free on Saturday mornings.'
 ),
 (
+  'isha_player',
+  'isha@sportsync.com',
+  crypt('player123', gen_salt('bf')),
+  'Isha Kulkarni',
+  'player',
+  'Badminton',
+  'Beginner',
+  'Hyderabad',
+  'New to badminton and excited to join weekday coaching sessions.',
+  'Mostly available on weekday evenings.'
+),
+(
+  'vikram_player',
+  'vikram@sportsync.com',
+  crypt('player123', gen_salt('bf')),
+  'Vikram Desai',
+  'player',
+  'Tennis',
+  'Intermediate',
+  'Hyderabad',
+  'Looking for competitive rallies and structured tennis practice.',
+  'Prefers early morning sessions and weekend drills.'
+),
+(
+  'priya_player',
+  'priya@sportsync.com',
+  crypt('player123', gen_salt('bf')),
+  'Priya Shah',
+  'player',
+  'Badminton',
+  'Advanced',
+  'Hyderabad',
+  'Club-level badminton player searching for strong sparring partners.',
+  'Usually free after 7 PM on weekdays.'
+),
+(
+  'neha_player',
+  'neha@sportsync.com',
+  crypt('player123', gen_salt('bf')),
+  'Neha Joshi',
+  'player',
+  'Badminton',
+  'Intermediate',
+  'Hyderabad',
+  'Enjoys weekday badminton games and mixed doubles sessions.',
+  'Available Tuesday and Thursday evenings.'
+),
+(
+  'arav_player',
+  'arav@sportsync.com',
+  crypt('player123', gen_salt('bf')),
+  'Arav Bansal',
+  'player',
+  'Tennis',
+  'Beginner',
+  'Hyderabad',
+  'Looking for regular tennis coaching and easy matchplay sessions.',
+  'Free on weekday mornings and Sunday evenings.'
+),
+(
+  'kavya_player',
+  'kavya@sportsync.com',
+  crypt('player123', gen_salt('bf')),
+  'Kavya Ramesh',
+  'player',
+  'Badminton',
+  'Beginner',
+  'Hyderabad',
+  'Recently started playing badminton and wants coaching plus group games.',
+  'Usually free after office hours and on Saturdays.'
+),
+(
   'coach_meera',
   'meera@sportsync.com',
   crypt('coach123', gen_salt('bf')),
@@ -74,6 +146,54 @@ INSERT INTO users (
   'Takes both weekday and weekend sessions.'
 ),
 (
+  'coach_saanvi',
+  'saanvi@sportsync.com',
+  crypt('coach123', gen_salt('bf')),
+  'Saanvi Gupta',
+  'coach',
+  'Badminton',
+  'Advanced',
+  'Hyderabad',
+  'Badminton coach focused on singles endurance, court coverage, and match temperament.',
+  'Open for weekday mornings and weekend evenings.'
+),
+(
+  'coach_rohan',
+  'rohan@sportsync.com',
+  crypt('coach123', gen_salt('bf')),
+  'Rohan Malhotra',
+  'coach',
+  'Tennis',
+  'Advanced',
+  'Hyderabad',
+  'Tennis coach who works on stroke mechanics, serve rhythm, and point construction.',
+  'Available for morning and post-work sessions.'
+),
+(
+  'coach_tara',
+  'tara@sportsync.com',
+  crypt('coach123', gen_salt('bf')),
+  'Tara Bedi',
+  'coach',
+  'Badminton',
+  'Advanced',
+  'Hyderabad',
+  'Badminton coach who specializes in beginner foundations, net play, and movement recovery.',
+  'Usually open for weekday evenings and Sunday mornings.'
+),
+(
+  'coach_dev',
+  'dev@sportsync.com',
+  crypt('coach123', gen_salt('bf')),
+  'Dev Khanna',
+  'coach',
+  'Tennis',
+  'Advanced',
+  'Hyderabad',
+  'Tennis coach with a focus on footwork, serve consistency, and rally discipline.',
+  'Available across weekday mornings and weekend slots.'
+),
+(
   'owner_sneha',
   'sneha@sportsync.com',
   crypt('owner123', gen_salt('bf')),
@@ -96,13 +216,41 @@ INSERT INTO users (
   'Hyderabad',
   'Owns an outdoor tennis center used by college players and coaches.',
   'Open to recurring bookings.'
+),
+(
+  'owner_farah',
+  'farah@sportsync.com',
+  crypt('owner123', gen_salt('bf')),
+  'Farah Khan',
+  'owner',
+  'Badminton',
+  'Advanced',
+  'Hyderabad',
+  'Manages an indoor sports hub with both badminton and tennis facilities.',
+  'Venue desk active from 7 AM to 10 PM.'
+),
+(
+  'owner_manoj',
+  'manoj@sportsync.com',
+  crypt('owner123', gen_salt('bf')),
+  'Manoj Kulkarni',
+  'owner',
+  'Tennis',
+  'Advanced',
+  'Hyderabad',
+  'Operates a neighborhood racket sports venue with steady weekday traffic.',
+  'Front desk open every day from 6 AM to 9 PM.'
 );
 
 INSERT INTO coach_profiles (user_id, experience_years, hourly_rate, coaching_history) VALUES
 ((SELECT id FROM users WHERE username = 'coach_meera'), 7, 900.00, 'Worked with school and academy level badminton players for 7 years.'),
 ((SELECT id FROM users WHERE username = 'coach_arjun'), 9, 1200.00, 'Former district circuit competitor with structured beginner-to-advanced programs.'),
 ((SELECT id FROM users WHERE username = 'coach_nisha'), 5, 750.00, 'Runs structured badminton sessions for new and returning players.'),
-((SELECT id FROM users WHERE username = 'coach_adi'), 6, 950.00, 'Coached tennis learners through stroke building and match play basics.');
+((SELECT id FROM users WHERE username = 'coach_adi'), 6, 950.00, 'Coached tennis learners through stroke building and match play basics.'),
+((SELECT id FROM users WHERE username = 'coach_saanvi'), 8, 1100.00, 'Guided academy and club players through singles conditioning and tournament preparation.'),
+((SELECT id FROM users WHERE username = 'coach_rohan'), 7, 1050.00, 'Works with recreational and intermediate tennis players on shot consistency and tactical play.'),
+((SELECT id FROM users WHERE username = 'coach_tara'), 4, 700.00, 'Runs beginner-friendly badminton sessions with strong emphasis on consistency and court movement.'),
+((SELECT id FROM users WHERE username = 'coach_dev'), 8, 1150.00, 'Trains club-level tennis players through tactical drills, serve repetition, and match preparation.');
 
 INSERT INTO coach_availability (coach_id, weekday, start_time, end_time) VALUES
 ((SELECT id FROM users WHERE username = 'coach_meera'), 0, '07:00', '10:00'),
@@ -146,7 +294,24 @@ INSERT INTO coach_availability (coach_id, weekday, start_time, end_time) VALUES
 ((SELECT id FROM users WHERE username = 'coach_adi'), 3, '06:00', '09:00'),
 ((SELECT id FROM users WHERE username = 'coach_adi'), 4, '17:00', '20:00'),
 ((SELECT id FROM users WHERE username = 'coach_adi'), 5, '06:00', '09:00'),
-((SELECT id FROM users WHERE username = 'coach_adi'), 6, '07:00', '11:00');
+((SELECT id FROM users WHERE username = 'coach_adi'), 6, '07:00', '11:00'),
+((SELECT id FROM users WHERE username = 'coach_saanvi'), 1, '07:00', '10:00'),
+((SELECT id FROM users WHERE username = 'coach_saanvi'), 2, '07:00', '10:00'),
+((SELECT id FROM users WHERE username = 'coach_saanvi'), 4, '18:00', '21:00'),
+((SELECT id FROM users WHERE username = 'coach_saanvi'), 6, '16:00', '20:00'),
+((SELECT id FROM users WHERE username = 'coach_rohan'), 0, '06:30', '09:30'),
+((SELECT id FROM users WHERE username = 'coach_rohan'), 2, '18:00', '21:00'),
+((SELECT id FROM users WHERE username = 'coach_rohan'), 3, '06:30', '09:30'),
+((SELECT id FROM users WHERE username = 'coach_rohan'), 5, '17:00', '20:00'),
+((SELECT id FROM users WHERE username = 'coach_rohan'), 6, '07:00', '11:00'),
+((SELECT id FROM users WHERE username = 'coach_tara'), 1, '18:00', '21:00'),
+((SELECT id FROM users WHERE username = 'coach_tara'), 3, '18:00', '21:00'),
+((SELECT id FROM users WHERE username = 'coach_tara'), 5, '17:30', '20:30'),
+((SELECT id FROM users WHERE username = 'coach_tara'), 6, '08:00', '11:00'),
+((SELECT id FROM users WHERE username = 'coach_dev'), 1, '06:00', '09:00'),
+((SELECT id FROM users WHERE username = 'coach_dev'), 2, '06:00', '09:00'),
+((SELECT id FROM users WHERE username = 'coach_dev'), 4, '17:00', '20:00'),
+((SELECT id FROM users WHERE username = 'coach_dev'), 6, '07:00', '10:00');
 
 INSERT INTO courts (owner_id, name, sport_type, location, surface, price_per_hour, capacity, description) VALUES
 (
@@ -198,6 +363,56 @@ INSERT INTO courts (owner_id, name, sport_type, location, surface, price_per_hou
   750.00,
   4,
   'Second outdoor tennis court with similar lighting and coaching-friendly timing.'
+),
+(
+  (SELECT id FROM users WHERE username = 'owner_farah'),
+  'Jubilee Hills Shuttle Court 1',
+  'Badminton',
+  'Jubilee Hills, Hyderabad',
+  'Wooden',
+  650.00,
+  4,
+  'Premium indoor badminton court with bright lighting and cushioned wooden flooring.'
+),
+(
+  (SELECT id FROM users WHERE username = 'owner_farah'),
+  'Jubilee Hills Shuttle Court 2',
+  'Badminton',
+  'Jubilee Hills, Hyderabad',
+  'Wooden',
+  600.00,
+  4,
+  'Training-friendly badminton court suited for drills, sparring, and evening games.'
+),
+(
+  (SELECT id FROM users WHERE username = 'owner_farah'),
+  'Hitech Tennis Studio Court 1',
+  'Tennis',
+  'Hitech City, Hyderabad',
+  'Clay',
+  850.00,
+  4,
+  'Well-maintained clay tennis court designed for coaching and long rally sessions.'
+),
+(
+  (SELECT id FROM users WHERE username = 'owner_manoj'),
+  'Banjara Rally Court',
+  'Badminton',
+  'Banjara Hills, Hyderabad',
+  'Synthetic',
+  550.00,
+  4,
+  'Neighborhood badminton court popular for quick weekday games and practice rallies.'
+),
+(
+  (SELECT id FROM users WHERE username = 'owner_manoj'),
+  'Banjara Tennis Court',
+  'Tennis',
+  'Banjara Hills, Hyderabad',
+  'Hard',
+  780.00,
+  4,
+  'Outdoor tennis court with bright evening lights and coaching-friendly timing.'
 );
 
 INSERT INTO court_availability (court_id, weekday, start_time, end_time) VALUES
@@ -270,7 +485,41 @@ INSERT INTO court_availability (court_id, weekday, start_time, end_time) VALUES
 ((SELECT id FROM courts WHERE name = 'Sunrise Tennis Centre Court B'), 5, '06:00', '11:00'),
 ((SELECT id FROM courts WHERE name = 'Sunrise Tennis Centre Court B'), 5, '16:00', '20:00'),
 ((SELECT id FROM courts WHERE name = 'Sunrise Tennis Centre Court B'), 6, '06:00', '12:00'),
-((SELECT id FROM courts WHERE name = 'Sunrise Tennis Centre Court B'), 6, '15:00', '20:00');
+((SELECT id FROM courts WHERE name = 'Sunrise Tennis Centre Court B'), 6, '15:00', '20:00'),
+((SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 1'), 0, '07:00', '12:00'),
+((SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 1'), 0, '17:00', '22:00'),
+((SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 1'), 2, '07:00', '12:00'),
+((SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 1'), 2, '17:00', '22:00'),
+((SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 1'), 4, '07:00', '12:00'),
+((SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 1'), 4, '17:00', '22:00'),
+((SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 1'), 6, '08:00', '21:00'),
+((SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 2'), 1, '06:30', '11:30'),
+((SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 2'), 1, '17:00', '21:30'),
+((SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 2'), 3, '06:30', '11:30'),
+((SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 2'), 3, '17:00', '21:30'),
+((SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 2'), 5, '06:30', '11:30'),
+((SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 2'), 5, '17:00', '21:30'),
+((SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 2'), 6, '08:00', '20:00'),
+((SELECT id FROM courts WHERE name = 'Hitech Tennis Studio Court 1'), 0, '06:00', '10:00'),
+((SELECT id FROM courts WHERE name = 'Hitech Tennis Studio Court 1'), 1, '06:00', '10:00'),
+((SELECT id FROM courts WHERE name = 'Hitech Tennis Studio Court 1'), 1, '17:00', '20:00'),
+((SELECT id FROM courts WHERE name = 'Hitech Tennis Studio Court 1'), 3, '06:00', '10:00'),
+((SELECT id FROM courts WHERE name = 'Hitech Tennis Studio Court 1'), 3, '17:00', '20:00'),
+((SELECT id FROM courts WHERE name = 'Hitech Tennis Studio Court 1'), 5, '06:00', '10:00'),
+((SELECT id FROM courts WHERE name = 'Hitech Tennis Studio Court 1'), 6, '07:00', '12:00'),
+((SELECT id FROM courts WHERE name = 'Banjara Rally Court'), 1, '07:00', '11:00'),
+((SELECT id FROM courts WHERE name = 'Banjara Rally Court'), 1, '17:00', '21:00'),
+((SELECT id FROM courts WHERE name = 'Banjara Rally Court'), 3, '07:00', '11:00'),
+((SELECT id FROM courts WHERE name = 'Banjara Rally Court'), 3, '17:00', '21:00'),
+((SELECT id FROM courts WHERE name = 'Banjara Rally Court'), 5, '07:00', '11:00'),
+((SELECT id FROM courts WHERE name = 'Banjara Rally Court'), 5, '17:00', '21:00'),
+((SELECT id FROM courts WHERE name = 'Banjara Rally Court'), 6, '08:00', '20:00'),
+((SELECT id FROM courts WHERE name = 'Banjara Tennis Court'), 0, '06:00', '10:00'),
+((SELECT id FROM courts WHERE name = 'Banjara Tennis Court'), 2, '06:00', '10:00'),
+((SELECT id FROM courts WHERE name = 'Banjara Tennis Court'), 2, '17:00', '20:00'),
+((SELECT id FROM courts WHERE name = 'Banjara Tennis Court'), 4, '06:00', '10:00'),
+((SELECT id FROM courts WHERE name = 'Banjara Tennis Court'), 4, '17:00', '20:00'),
+((SELECT id FROM courts WHERE name = 'Banjara Tennis Court'), 6, '07:00', '11:00');
 
 INSERT INTO bookings (
   player_id, court_id, coach_id, booking_date, start_time, end_time, total_price, notes
@@ -294,6 +543,66 @@ INSERT INTO bookings (
   '08:00',
   1900.00,
   'Beginner tennis fundamentals session.'
+),
+(
+  (SELECT id FROM users WHERE username = 'isha_player'),
+  (SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 2'),
+  (SELECT id FROM users WHERE username = 'coach_saanvi'),
+  DATE '2026-04-11',
+  '17:00',
+  '18:00',
+  1700.00,
+  'Intro coaching session focused on grip, movement, and basic clears.'
+),
+(
+  (SELECT id FROM users WHERE username = 'vikram_player'),
+  (SELECT id FROM courts WHERE name = 'Hitech Tennis Studio Court 1'),
+  (SELECT id FROM users WHERE username = 'coach_rohan'),
+  DATE '2026-04-12',
+  '07:00',
+  '08:00',
+  1900.00,
+  'Intermediate tennis session with serve rhythm and rally drills.'
+),
+(
+  (SELECT id FROM users WHERE username = 'priya_player'),
+  (SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 1'),
+  NULL,
+  DATE '2026-04-13',
+  '19:00',
+  '20:00',
+  650.00,
+  'Court-only booking for match practice with friends.'
+),
+(
+  (SELECT id FROM users WHERE username = 'neha_player'),
+  (SELECT id FROM courts WHERE name = 'Banjara Rally Court'),
+  (SELECT id FROM users WHERE username = 'coach_tara'),
+  DATE '2026-04-14',
+  '18:00',
+  '19:00',
+  1250.00,
+  'Weekday badminton coaching session focused on placement and net recovery.'
+),
+(
+  (SELECT id FROM users WHERE username = 'arav_player'),
+  (SELECT id FROM courts WHERE name = 'Banjara Tennis Court'),
+  (SELECT id FROM users WHERE username = 'coach_dev'),
+  DATE '2026-04-15',
+  '06:00',
+  '07:00',
+  1930.00,
+  'Early-morning beginner tennis lesson with serve and forehand basics.'
+),
+(
+  (SELECT id FROM users WHERE username = 'kavya_player'),
+  (SELECT id FROM courts WHERE name = 'Gachibowli Smash Arena Court 2'),
+  NULL,
+  DATE '2026-04-16',
+  '18:00',
+  '19:00',
+  450.00,
+  'Evening court booking for friendly rallies and practice games.'
 );
 
 INSERT INTO player_groups (
@@ -320,7 +629,13 @@ INSERT INTO player_groups (
 
 INSERT INTO group_members (group_id, user_id, member_role) VALUES
 ((SELECT id FROM player_groups WHERE name = 'Hyderabad Weekend Smashers'), (SELECT id FROM users WHERE username = 'ananya_player'), 'captain'),
-((SELECT id FROM player_groups WHERE name = 'Madhapur Morning Tennis Crew'), (SELECT id FROM users WHERE username = 'rahul_player'), 'captain');
+((SELECT id FROM player_groups WHERE name = 'Madhapur Morning Tennis Crew'), (SELECT id FROM users WHERE username = 'rahul_player'), 'captain'),
+((SELECT id FROM player_groups WHERE name = 'Hyderabad Weekend Smashers'), (SELECT id FROM users WHERE username = 'isha_player'), 'member'),
+((SELECT id FROM player_groups WHERE name = 'Hyderabad Weekend Smashers'), (SELECT id FROM users WHERE username = 'priya_player'), 'member'),
+((SELECT id FROM player_groups WHERE name = 'Madhapur Morning Tennis Crew'), (SELECT id FROM users WHERE username = 'vikram_player'), 'member'),
+((SELECT id FROM player_groups WHERE name = 'Hyderabad Weekend Smashers'), (SELECT id FROM users WHERE username = 'neha_player'), 'member'),
+((SELECT id FROM player_groups WHERE name = 'Madhapur Morning Tennis Crew'), (SELECT id FROM users WHERE username = 'arav_player'), 'member'),
+((SELECT id FROM player_groups WHERE name = 'Hyderabad Weekend Smashers'), (SELECT id FROM users WHERE username = 'kavya_player'), 'member');
 
 INSERT INTO group_messages (group_id, sender_id, message_text) VALUES
 (
@@ -355,4 +670,46 @@ INSERT INTO reviews (reviewer_id, coach_id, court_id, rating, comment) VALUES
   (SELECT id FROM courts WHERE name = 'Gachibowli Smash Arena Court 1'),
   5,
   'Clean court, good lighting, and easy booking experience.'
+),
+(
+  (SELECT id FROM users WHERE username = 'isha_player'),
+  (SELECT id FROM users WHERE username = 'coach_saanvi'),
+  NULL,
+  5,
+  'Very encouraging coaching style and easy-to-follow drills for a beginner.'
+),
+(
+  (SELECT id FROM users WHERE username = 'vikram_player'),
+  (SELECT id FROM users WHERE username = 'coach_rohan'),
+  NULL,
+  4,
+  'Solid technical cues and well-paced session structure.'
+),
+(
+  (SELECT id FROM users WHERE username = 'priya_player'),
+  NULL,
+  (SELECT id FROM courts WHERE name = 'Jubilee Hills Shuttle Court 1'),
+  5,
+  'Great flooring, bright lights, and a premium indoor setup.'
+),
+(
+  (SELECT id FROM users WHERE username = 'neha_player'),
+  (SELECT id FROM users WHERE username = 'coach_tara'),
+  NULL,
+  4,
+  'Helpful coaching session with clear feedback and good progression through drills.'
+),
+(
+  (SELECT id FROM users WHERE username = 'arav_player'),
+  (SELECT id FROM users WHERE username = 'coach_dev'),
+  NULL,
+  5,
+  'Very patient tennis coach with simple explanations and solid rally practice.'
+),
+(
+  (SELECT id FROM users WHERE username = 'kavya_player'),
+  NULL,
+  (SELECT id FROM courts WHERE name = 'Gachibowli Smash Arena Court 2'),
+  4,
+  'Good value court with enough space and a comfortable evening slot.'
 );

@@ -46,6 +46,16 @@ const getMyCoachDashboard = async (req, res, next) => {
 
 const addMyAvailability = async (req, res, next) => {
   try {
+    const { weekday, startTime, endTime } = req.body;
+
+    if (weekday === undefined || !startTime || !endTime) {
+      return res.status(400).json({ message: 'Weekday, start time, and end time are required.' });
+    }
+
+    if (startTime >= endTime) {
+      return res.status(400).json({ message: 'End time must be after start time.' });
+    }
+
     const availability = await addCoachAvailability(req.session.user.id, req.body);
     return res.status(201).json({ availability });
   } catch (error) {

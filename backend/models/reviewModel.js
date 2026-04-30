@@ -39,7 +39,75 @@ const getReviews = async ({ coachId, courtId }) => {
   return result.rows;
 };
 
+const getReviewTargetsForUser = async (userId) => {
+  const [courtsResult, coachesResult] = await Promise.all([
+    db.query(
+      `SELECT DISTINCT
+        c.id,
+        c.name
+       FROM bookings b
+       JOIN courts c ON c.id = b.court_id
+       WHERE b.player_id = $1
+         AND b.status = 'confirmed'
+         AND b.booking_date <= CURRENT_DATE
+       ORDER BY c.name ASC`,
+      [userId],
+    ),
+    db.query(
+      `SELECT DISTINCT
+        u.id,
+        u.full_name
+       FROM bookings b
+       JOIN users u ON u.id = b.coach_id
+       WHERE b.player_id = $1
+         AND b.coach_id IS NOT NULL
+         AND b.status = 'confirmed'
+         AND b.booking_date <= CURRENT_DATE
+       ORDER BY u.full_name ASC`,
+      [userId],
+    ),
+  ]);
+
+  return {
+    courts: courtsResult.rows,
+    coaches: coachesResult.rows,
+  };
+};
+
+const hasUserBookedCourt = async ({ userId, courtId }) => {
+  const result = await db.query(
+    `SELECT 1
+     FROM bookings
+     WHERE player_id = $1
+       AND court_id = $2
+       AND status = 'confirmed'
+       AND booking_date <= CURRENT_DATE
+     LIMIT 1`,
+    [userId, courtId],
+  );
+
+  return result.rowCount > 0;
+};
+
+const hasUserBookedCoach = async ({ userId, coachId }) => {
+  const result = await db.query(
+    `SELECT 1
+     FROM bookings
+     WHERE player_id = $1
+       AND coach_id = $2
+       AND status = 'confirmed'
+       AND booking_date <= CURRENT_DATE
+     LIMIT 1`,
+    [userId, coachId],
+  );
+
+  return result.rowCount > 0;
+};
+
 module.exports = {
   createReview,
   getReviews,
+  getReviewTargetsForUser,
+  hasUserBookedCoach,
+  hasUserBookedCourt,
 };

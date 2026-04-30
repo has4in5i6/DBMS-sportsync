@@ -11,12 +11,6 @@ const roleOptions = [
   { value: 'owner', label: 'Court Owner' },
 ];
 
-const skillLevelOptions = [
-  { value: 'Beginner', label: 'Beginner' },
-  { value: 'Moderate', label: 'Moderate' },
-  { value: 'Advanced', label: 'Advanced' },
-];
-
 export default function Signup() {
   const navigate = useNavigate();
   const { signup } = useAuth();
@@ -26,10 +20,6 @@ export default function Signup() {
     email: '',
     password: '',
     role: 'player',
-    primarySport: 'Badminton',
-    skillLevel: 'Beginner',
-    city: 'Hyderabad',
-    bio: '',
   });
   const [error, setError] = useState('');
 
@@ -51,25 +41,13 @@ export default function Signup() {
 
   return (
     <div className="page-shell auth-shell">
-      <Card title="Create your SportSync profile" subtitle="Set up your role and start booking or managing sessions.">
+      <Card title="Create your SportSync profile" subtitle="Start with the basics now and complete the rest from your profile later.">
         <form className="grid-form" onSubmit={handleSubmit}>
           <Input label="Full name" name="fullName" value={form.fullName} onChange={handleChange} required />
           <Input label="Username" name="username" value={form.username} onChange={handleChange} required />
           <Input label="Email" name="email" type="email" value={form.email} onChange={handleChange} required />
           <Input label="Password" name="password" type="password" value={form.password} onChange={handleChange} required />
           <Input label="Role" as="select" name="role" value={form.role} onChange={handleChange} options={roleOptions} />
-          <Input label="Primary sport" name="primarySport" value={form.primarySport} onChange={handleChange} required />
-          <Input
-            label="Skill level"
-            as="select"
-            name="skillLevel"
-            value={form.skillLevel}
-            onChange={handleChange}
-            options={skillLevelOptions}
-            required
-          />
-          <Input label="City" name="city" value={form.city} onChange={handleChange} required />
-          <Input label="Bio" as="textarea" name="bio" value={form.bio} onChange={handleChange} rows="4" />
           {error && <p className="form-error">{error}</p>}
           <Button type="submit">Create account</Button>
         </form>

@@ -20,9 +20,9 @@ const signup = async (req, res, next) => {
       password,
       fullName,
       role = 'player',
-      primarySport,
-      skillLevel,
-      city,
+      primarySport = 'Badminton',
+      skillLevel = 'Beginner',
+      city = 'Hyderabad',
       bio = '',
     } = req.body;
 

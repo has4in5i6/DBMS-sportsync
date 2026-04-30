@@ -35,10 +35,10 @@ const createUser = async ({
   passwordHash,
   fullName,
   role,
-  primarySport,
-  skillLevel,
-  city,
-  bio,
+  primarySport = 'Badminton',
+  skillLevel = 'Beginner',
+  city = 'Hyderabad',
+  bio = '',
 }) => {
   const client = await db.connect();
 

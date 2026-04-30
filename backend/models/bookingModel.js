@@ -1,6 +1,14 @@
 const db = require('../db');
 
-const listConflictingBookings = async ({ bookingDate, startTime, endTime, courtId, coachId, playerId }) => {
+const listConflictingBookings = async ({
+  bookingDate,
+  startTime,
+  endTime,
+  courtId,
+  coachId,
+  playerId,
+  queryable = db,
+}) => {
   const params = [bookingDate, startTime, endTime, courtId];
   const scopeChecks = ['court_id = $4'];
 
@@ -14,7 +22,7 @@ const listConflictingBookings = async ({ bookingDate, startTime, endTime, courtI
     scopeChecks.push(`player_id = $${params.length}`);
   }
 
-  const result = await db.query(
+  const result = await queryable.query(
     `SELECT *
      FROM bookings
      WHERE booking_date = $1
@@ -55,6 +63,72 @@ const createBooking = async ({
   );
 
   return result.rows[0];
+};
+
+const createBookingWithTransaction = async ({
+  playerId,
+  courtId,
+  coachId,
+  bookingDate,
+  startTime,
+  endTime,
+  totalPrice,
+  notes,
+}) => {
+  const client = await db.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // Lock the resources involved so overlapping bookings on the same court, player,
+    // or coach are serialized before we re-check conflicts and insert.
+    await client.query('SELECT id FROM courts WHERE id = $1 FOR UPDATE', [courtId]);
+    await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [playerId]);
+
+    if (coachId) {
+      await client.query('SELECT user_id FROM coach_profiles WHERE user_id = $1 FOR UPDATE', [coachId]);
+    }
+
+    const conflicts = await listConflictingBookings({
+      bookingDate,
+      startTime,
+      endTime,
+      courtId,
+      coachId,
+      playerId,
+      queryable: client,
+    });
+
+    if (conflicts.length > 0) {
+      const error = new Error('Booking conflicts with an existing court, coach, or player schedule.');
+      error.status = 409;
+      throw error;
+    }
+
+    const result = await client.query(
+      `INSERT INTO bookings (
+        player_id,
+        court_id,
+        coach_id,
+        booking_date,
+        start_time,
+        end_time,
+        total_price,
+        notes
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *`,
+      [playerId, courtId, coachId || null, bookingDate, startTime, endTime, totalPrice, notes || ''],
+    );
+
+    await client.query('COMMIT');
+    return result.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 const getPlayerBookings = async (playerId) => {
@@ -165,6 +239,7 @@ const cancelBooking = async (bookingId, userId, role) => {
 module.exports = {
   cancelBooking,
   createBooking,
+  createBookingWithTransaction,
   getCoachBookingsForDate,
   getCoachBookings,
   getCourtBookingsForDate,

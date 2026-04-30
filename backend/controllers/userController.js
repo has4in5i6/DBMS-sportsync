@@ -2,6 +2,15 @@ const { getUserProfileById, updateUserProfile } = require('../models/userModel')
 const { getPlayerBookings, getCoachBookings, getOwnerBookings } = require('../models/bookingModel');
 const { listGroupsForUser } = require('../models/groupModel');
 
+const isUpcomingConfirmedBooking = (booking) => {
+  if (booking.status !== 'confirmed') {
+    return false;
+  }
+
+  const bookingDate = new Date(`${booking.booking_date}T${booking.start_time}`);
+  return !Number.isNaN(bookingDate.getTime()) && bookingDate >= new Date();
+};
+
 const getMe = async (req, res, next) => {
   try {
     const user = await getUserProfileById(req.session.user.id);
@@ -35,14 +44,16 @@ const getMyOverview = async (req, res, next) => {
       bookings = await getOwnerBookings(userId);
     }
 
+    const overviewBookings = bookings.filter(isUpcomingConfirmedBooking);
+
     const groups = role === 'player' ? await listGroupsForUser(userId) : [];
 
     return res.json({
       stats: {
-        bookingsCount: bookings.length,
+        bookingsCount: overviewBookings.length,
         groupsCount: groups.length,
       },
-      bookings: bookings.slice(0, 5),
+      bookings: overviewBookings.slice(0, 5),
       groups,
     });
   } catch (error) {
