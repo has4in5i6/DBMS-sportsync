@@ -19,7 +19,7 @@ import { buildQuery, formatTime } from '../../utils/helpers';
 const skillLevelOptions = [
   { value: '', label: 'Any level' },
   { value: 'Beginner', label: 'Beginner' },
-  { value: 'Moderate', label: 'Moderate' },
+  { value: 'Intermediate', label: 'Intermediate' },
   { value: 'Advanced', label: 'Advanced' },
 ];
 
@@ -263,7 +263,7 @@ export default function Search() {
                               <strong>{weekdayLabels[Number(weekday)]}</strong>
                               <div className="slot-row">
                                 {slots.map((slot) => (
-                                  user?.role === 'player' ? (
+                                  ['player', 'coach'].includes(user?.role || '') ? (
                                     <Link
                                       className="slot-chip"
                                       key={`${slot.weekday}-${slot.start_time}-${slot.end_time}`}
@@ -281,7 +281,7 @@ export default function Search() {
                                     <span
                                       className="slot-chip is-disabled"
                                       key={`${slot.weekday}-${slot.start_time}-${slot.end_time}`}
-                                      title="Only players can create bookings."
+                                      title="Log in as a player or coach to create a booking."
                                     >
                                       {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
                                     </span>
@@ -362,7 +362,7 @@ export default function Search() {
                                     <span
                                       className="slot-chip is-disabled"
                                       key={`${slot.weekday}-${slot.start_time}-${slot.end_time}`}
-                                      title="Only players can create bookings."
+                                      title="Only players can book a coach session."
                                     >
                                       {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
                                     </span>

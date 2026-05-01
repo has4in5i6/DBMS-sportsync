@@ -6,8 +6,11 @@ const {
   getCoachBookingsForDate,
   getCoachBookings,
   getCourtBookingsForDate,
+  getCourtSlotInterestCount,
+  getCourtSlotInterestCounts,
   getOwnerBookings,
   getPlayerBookings,
+  incrementCourtSlotInterest,
 } = require('../models/bookingModel');
 const {
   durationInHours,
@@ -19,11 +22,15 @@ const {
   weekdayFromDate,
 } = require('../utils/timeUtils');
 
+const DYNAMIC_PRICE_FACTOR = 0.5;
+
 const formatSlot = (slot) => ({
   weekday: slot.weekday,
   startTime: slot.start_time.slice(0, 5),
   endTime: slot.end_time.slice(0, 5),
 });
+
+const roundCurrency = (value) => Number(Number(value).toFixed(2));
 
 const buildBookableSlots = (availabilityRows, bookingRows, weekday) => {
   const generatedSlots = [];
@@ -59,6 +66,34 @@ const buildBookableSlots = (availabilityRows, bookingRows, weekday) => {
 };
 
 const getSlotKey = (slot) => `${slot.weekday}-${slot.startTime}-${slot.endTime}`;
+
+const getInterestSlotKey = (startTime, endTime) => `${String(startTime).slice(0, 5)}-${String(endTime).slice(0, 5)}`;
+
+const buildInterestCountMap = (interestRows) => interestRows.reduce((accumulator, row) => {
+  accumulator[getInterestSlotKey(row.start_time, row.end_time)] = Number(row.interest_count || 0);
+  return accumulator;
+}, {});
+
+const calculateDynamicCourtPrice = ({ basePrice, duration = 1, interestCount = 0 }) => (
+  roundCurrency(Number(basePrice) * duration * (1 + (DYNAMIC_PRICE_FACTOR * interestCount)))
+);
+
+const enrichSlotsWithPricing = (slots, court, interestCountMap) => slots.map((slot) => {
+  const interestCount = Number(interestCountMap[getInterestSlotKey(slot.startTime, slot.endTime)] || 0);
+  const baseCourtPricePerHour = roundCurrency(Number(court.price_per_hour));
+  const dynamicCourtPricePerHour = calculateDynamicCourtPrice({
+    basePrice: baseCourtPricePerHour,
+    interestCount,
+  });
+
+  return {
+    ...slot,
+    interestCount,
+    baseCourtPricePerHour,
+    dynamicCourtPricePerHour,
+    dynamicCourtPrice: dynamicCourtPricePerHour,
+  };
+});
 
 const validateAvailability = async ({ bookingDate, startTime, endTime, courtId, coachId }) => {
   const weekday = weekdayFromDate(bookingDate);
@@ -136,27 +171,38 @@ const getBookingAvailability = async (req, res, next) => {
       return res.status(400).json({ message: 'Invalid booking date.' });
     }
 
-    const [courtAvailability, courtBookings, matchingCoaches] = await Promise.all([
+    const [courtAvailability, courtBookings, matchingCoaches, slotInterestRows] = await Promise.all([
       getCourtAvailability(courtId),
       getCourtBookingsForDate(courtId, bookingDate),
       searchCoaches({ sport: court.sport_type }),
+      getCourtSlotInterestCounts(courtId, bookingDate),
     ]);
 
-    const availableCourtSlots = buildBookableSlots(courtAvailability, courtBookings, weekday);
+    const interestCountMap = buildInterestCountMap(slotInterestRows);
+    const availableCourtSlots = enrichSlotsWithPricing(
+      buildBookableSlots(courtAvailability, courtBookings, weekday),
+      court,
+      interestCountMap,
+    );
     const courtSlotKeys = new Set(availableCourtSlots.map(getSlotKey));
 
     if (req.session.user.role === 'coach') {
       const ownCoachAvailability = await getCoachAvailability(req.session.user.id);
       const ownCoachBookings = await getCoachBookingsForDate(bookingDate, [req.session.user.id]);
-      const availableCoachSlots = buildBookableSlots(
-        ownCoachAvailability,
-        ownCoachBookings,
-        weekday,
-      ).filter((slot) => courtSlotKeys.has(getSlotKey(slot)));
+      const availableCoachSlots = enrichSlotsWithPricing(
+        buildBookableSlots(
+          ownCoachAvailability,
+          ownCoachBookings,
+          weekday,
+        ).filter((slot) => courtSlotKeys.has(getSlotKey(slot))),
+        court,
+        interestCountMap,
+      );
 
       return res.json({
         court,
         bookingDate,
+        pricingFactor: DYNAMIC_PRICE_FACTOR,
         availableWeekdays: [...new Set(courtAvailability.map((slot) => Number(slot.weekday)))]
           .filter((value) => !Number.isNaN(value))
           .sort((a, b) => a - b),
@@ -197,6 +243,7 @@ const getBookingAvailability = async (req, res, next) => {
     return res.json({
       court,
       bookingDate,
+      pricingFactor: DYNAMIC_PRICE_FACTOR,
       availableWeekdays,
       availableCourtSlots,
       coaches,
@@ -257,7 +304,13 @@ const createNewBooking = async (req, res, next) => {
     }
 
     const duration = durationInHours(startTime, endTime);
-    const totalPrice = Number(court.price_per_hour) * duration
+    const interestCount = await getCourtSlotInterestCount(courtId, bookingDate, startTime, endTime);
+    const courtPrice = calculateDynamicCourtPrice({
+      basePrice: Number(court.price_per_hour),
+      duration,
+      interestCount,
+    });
+    const totalPrice = courtPrice
       + (req.session.user.role === 'player' && coach ? Number(coach.hourly_rate) * duration : 0);
     const booking = await createBookingWithTransaction({
       playerId: req.session.user.role === 'player' ? req.session.user.id : null,
@@ -271,6 +324,64 @@ const createNewBooking = async (req, res, next) => {
     });
 
     return res.status(201).json({ booking });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const recordBookingInterest = async (req, res, next) => {
+  try {
+    const {
+      courtId,
+      bookingDate,
+      startTime,
+      endTime,
+    } = req.body;
+
+    if (!courtId || !bookingDate || !startTime || !endTime) {
+      return res.status(400).json({ message: 'Court, date, start time, and end time are required.' });
+    }
+
+    if (isPastDate(bookingDate)) {
+      return res.status(400).json({ message: 'Booking date cannot be in the past.' });
+    }
+
+    const court = await getCourtById(courtId);
+    if (!court) {
+      return res.status(404).json({ message: 'Court not found.' });
+    }
+
+    const availabilityError = await validateAvailability({
+      bookingDate,
+      startTime,
+      endTime,
+      courtId,
+      coachId: req.session.user.role === 'coach' ? req.session.user.id : null,
+    });
+    if (availabilityError) {
+      return res.status(409).json({ message: availabilityError });
+    }
+
+    const interestRow = await incrementCourtSlotInterest(courtId, bookingDate, startTime, endTime);
+    const interestCount = Number(interestRow.interest_count || 0);
+
+    return res.status(201).json({
+      slot: {
+        startTime: String(interestRow.start_time).slice(0, 5),
+        endTime: String(interestRow.end_time).slice(0, 5),
+        interestCount,
+        baseCourtPricePerHour: roundCurrency(Number(court.price_per_hour)),
+        dynamicCourtPricePerHour: calculateDynamicCourtPrice({
+          basePrice: Number(court.price_per_hour),
+          interestCount,
+        }),
+        dynamicCourtPrice: calculateDynamicCourtPrice({
+          basePrice: Number(court.price_per_hour),
+          interestCount,
+        }),
+      },
+      pricingFactor: DYNAMIC_PRICE_FACTOR,
+    });
   } catch (error) {
     return next(error);
   }
@@ -325,4 +436,5 @@ module.exports = {
   getCoachManagedBookings,
   getMyBookings,
   getOwnerManagedBookings,
+  recordBookingInterest,
 };

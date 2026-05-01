@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import { useAuth } from '../../context/AuthContext';
+import { formatDateTime } from '../../utils/helpers';
 import {
   approveJoinRequest,
   fetchGroupById,
@@ -182,7 +183,7 @@ export default function GroupDetails() {
                   <div className="chat-bubble" key={chatMessage.id}>
                     <strong>{chatMessage.sender_name}</strong>
                     <span>{chatMessage.message_text}</span>
-                    <small>{new Date(chatMessage.created_at).toLocaleString()}</small>
+                    <small>{formatDateTime(chatMessage.created_at)}</small>
                   </div>
                 ))}
                 {messages.length === 0 && <p>No messages yet. Start the conversation.</p>}

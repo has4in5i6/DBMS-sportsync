@@ -168,7 +168,7 @@ const getCoachBookings = async (coachId) => {
       p.full_name AS player_name,
       c.name AS court_name
      FROM bookings b
-     JOIN users p ON p.id = b.player_id
+     LEFT JOIN users p ON p.id = b.player_id
      JOIN courts c ON c.id = b.court_id
      WHERE b.coach_id = $1 AND b.status = 'confirmed'
      ORDER BY b.booking_date ASC, b.start_time ASC`,

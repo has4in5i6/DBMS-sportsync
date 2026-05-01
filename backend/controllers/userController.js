@@ -1,15 +1,7 @@
 const { getUserProfileById, updateUserProfile } = require('../models/userModel');
 const { getPlayerBookings, getCoachBookings, getOwnerBookings } = require('../models/bookingModel');
 const { listGroupsForUser } = require('../models/groupModel');
-
-const isUpcomingConfirmedBooking = (booking) => {
-  if (booking.status !== 'confirmed') {
-    return false;
-  }
-
-  const bookingDate = new Date(`${booking.booking_date}T${booking.start_time}`);
-  return !Number.isNaN(bookingDate.getTime()) && bookingDate >= new Date();
-};
+const { isUpcomingConfirmedBooking, sortBookingsByStartTime } = require('../utils/timeUtils');
 
 const getMe = async (req, res, next) => {
   try {
@@ -44,7 +36,9 @@ const getMyOverview = async (req, res, next) => {
       bookings = await getOwnerBookings(userId);
     }
 
-    const overviewBookings = bookings.filter(isUpcomingConfirmedBooking);
+    const overviewBookings = bookings
+      .filter(isUpcomingConfirmedBooking)
+      .sort(sortBookingsByStartTime);
 
     const groups = role === 'player' ? await listGroupsForUser(userId) : [];
 

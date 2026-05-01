@@ -2,11 +2,12 @@ const {
   addCoachAvailability,
   deleteCoachAvailability,
   getCoachAvailability,
-  getCoachBookings,
   getCoachById,
   searchCoaches,
 } = require('../models/coachModel');
+const { getCoachBookings } = require('../models/bookingModel');
 const { getReviews } = require('../models/reviewModel');
+const { isUpcomingConfirmedBooking, sortBookingsByStartTime } = require('../utils/timeUtils');
 
 const listCoaches = async (req, res, next) => {
   try {
@@ -36,7 +37,9 @@ const getMyCoachDashboard = async (req, res, next) => {
   try {
     const coach = await getCoachById(req.session.user.id);
     const availability = await getCoachAvailability(req.session.user.id);
-    const bookings = await getCoachBookings(req.session.user.id);
+    const bookings = (await getCoachBookings(req.session.user.id))
+      .filter(isUpcomingConfirmedBooking)
+      .sort(sortBookingsByStartTime);
     const reviews = await getReviews({ coachId: req.session.user.id });
     return res.json({ coach, availability, bookings, reviews });
   } catch (error) {

@@ -188,6 +188,25 @@ textarea {
   color: var(--muted);
 }
 
+.pricing-summary {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(117, 214, 164, 0.1);
+}
+
+.pricing-summary strong,
+.pricing-summary span,
+.pricing-summary small {
+  display: block;
+}
+
+.pricing-summary small {
+  color: var(--muted);
+}
+
 .hero-copy {
   max-width: 60ch;
   font-size: 1.05rem;

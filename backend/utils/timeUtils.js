@@ -75,6 +75,28 @@ const todayDateString = () => {
   return `${year}-${month}-${day}`;
 };
 
+const normalizeDateOnly = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    const time = value.getTime();
+    if (Number.isNaN(time)) {
+      return null;
+    }
+
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  const raw = String(value).trim();
+  const matchedDate = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  return matchedDate ? matchedDate[1] : null;
+};
+
 const isPastDate = (dateString) => {
   if (!dateString || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateString))) {
     return false;
@@ -83,12 +105,54 @@ const isPastDate = (dateString) => {
   return dateString < todayDateString();
 };
 
+const bookingStartDateTime = (booking) => {
+  const bookingDate = normalizeDateOnly(booking?.booking_date);
+  if (!bookingDate || !booking?.start_time) {
+    return null;
+  }
+
+  const startTime = String(booking.start_time).slice(0, 8);
+  const startDateTime = new Date(`${bookingDate}T${startTime}`);
+  return Number.isNaN(startDateTime.getTime()) ? null : startDateTime;
+};
+
+const isUpcomingConfirmedBooking = (booking) => {
+  if (booking?.status !== 'confirmed') {
+    return false;
+  }
+
+  const startDateTime = bookingStartDateTime(booking);
+  return startDateTime !== null && startDateTime >= new Date();
+};
+
+const sortBookingsByStartTime = (leftBooking, rightBooking) => {
+  const leftStart = bookingStartDateTime(leftBooking);
+  const rightStart = bookingStartDateTime(rightBooking);
+
+  if (!leftStart && !rightStart) {
+    return 0;
+  }
+
+  if (!leftStart) {
+    return 1;
+  }
+
+  if (!rightStart) {
+    return -1;
+  }
+
+  return leftStart - rightStart;
+};
+
 module.exports = {
+  bookingStartDateTime,
   durationInHours,
   isPastDate,
+  isUpcomingConfirmedBooking,
   minutesToTime,
   overlaps,
   slotContains,
+  sortBookingsByStartTime,
   todayDateString,
   toMinutes,
   weekdayFromDate,

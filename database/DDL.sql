@@ -5,6 +5,7 @@ DROP TABLE IF EXISTS group_messages CASCADE;
 DROP TABLE IF EXISTS group_join_requests CASCADE;
 DROP TABLE IF EXISTS group_members CASCADE;
 DROP TABLE IF EXISTS player_groups CASCADE;
+DROP TABLE IF EXISTS court_slot_interest CASCADE;
 DROP TABLE IF EXISTS bookings CASCADE;
 DROP TABLE IF EXISTS court_availability CASCADE;
 DROP TABLE IF EXISTS courts CASCADE;
@@ -82,6 +83,18 @@ CREATE TABLE bookings (
   CHECK (player_id IS NOT NULL OR coach_id IS NOT NULL)
 );
 
+CREATE TABLE court_slot_interest (
+  court_id INT NOT NULL REFERENCES courts(id) ON DELETE CASCADE,
+  booking_date DATE NOT NULL,
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  interest_count INT NOT NULL DEFAULT 0 CHECK (interest_count >= 0),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (court_id, booking_date, start_time, end_time),
+  CHECK (start_time < end_time)
+);
+
 CREATE TABLE player_groups (
   id SERIAL PRIMARY KEY,
   name VARCHAR(120) NOT NULL,
@@ -139,6 +152,7 @@ CREATE TABLE reviews (
 CREATE INDEX idx_bookings_court_time ON bookings (court_id, booking_date, start_time, end_time);
 CREATE INDEX idx_bookings_coach_time ON bookings (coach_id, booking_date, start_time, end_time);
 CREATE INDEX idx_bookings_player_time ON bookings (player_id, booking_date, start_time, end_time);
+CREATE INDEX idx_court_slot_interest_date ON court_slot_interest (court_id, booking_date);
 CREATE INDEX idx_group_join_requests_requester_status ON group_join_requests (requester_id, status, created_at);
 CREATE INDEX idx_group_join_requests_group_status ON group_join_requests (group_id, status, created_at);
 CREATE INDEX idx_group_messages_group_time ON group_messages (group_id, created_at);

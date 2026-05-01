@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
@@ -9,10 +9,17 @@ import {
   createBooking,
   fetchBookingAvailability,
   fetchMyBookings,
+  recordBookingInterest,
 } from '../../services/bookingService';
 import { fetchCourts } from '../../services/courtService';
 import { createReview, fetchMyReviewTargets } from '../../services/reviewService';
-import { buildQuery, formatDate, formatTime } from '../../utils/helpers';
+import {
+  buildQuery,
+  formatDate,
+  formatTime,
+  getBookingDisplayStatus,
+  getBookingLifecycle,
+} from '../../utils/helpers';
 
 const weekdayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const formatLocalDate = (date) => {
@@ -40,6 +47,7 @@ export default function Booking() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const isCoachView = user?.role === 'coach';
+  const trackedSlotSelectionsRef = useRef(new Set());
   const [bookingPref] = useState(() => ({
     courtId: searchParams.get('courtId') || '',
     coachId: searchParams.get('coachId') || '',
@@ -50,7 +58,12 @@ export default function Booking() {
   }));
   const [courts, setCourts] = useState([]);
   const [bookings, setBookings] = useState([]);
-  const [availability, setAvailability] = useState({ availableWeekdays: [], availableCourtSlots: [], coaches: [] });
+  const [availability, setAvailability] = useState({
+    availableWeekdays: [],
+    availableCourtSlots: [],
+    coaches: [],
+    pricingFactor: 0.5,
+  });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [reviewMessage, setReviewMessage] = useState('');
@@ -108,7 +121,12 @@ export default function Booking() {
   useEffect(() => {
     const loadAvailability = async () => {
       if (!form.courtId || !form.bookingDate) {
-        setAvailability({ availableWeekdays: [], availableCourtSlots: [], coaches: [] });
+        setAvailability({
+          availableWeekdays: [],
+          availableCourtSlots: [],
+          coaches: [],
+          pricingFactor: 0.5,
+        });
         return;
       }
 
@@ -123,6 +141,7 @@ export default function Booking() {
           availableWeekdays: data.availableWeekdays || [],
           availableCourtSlots: data.availableCourtSlots || [],
           coaches: data.coaches || [],
+          pricingFactor: Number(data.pricingFactor ?? 0.5),
         });
 
         if ((data.availableCourtSlots || []).length > 0) {
@@ -173,18 +192,79 @@ export default function Booking() {
         }
       } catch (err) {
         setError(err.message);
-        setAvailability({ availableWeekdays: [], availableCourtSlots: [], coaches: [] });
+        setAvailability({
+          availableWeekdays: [],
+          availableCourtSlots: [],
+          coaches: [],
+          pricingFactor: 0.5,
+        });
       }
     };
 
     loadAvailability();
   }, [form.courtId, form.bookingDate, isCoachView]);
 
+  useEffect(() => {
+    if (!form.courtId || !form.bookingDate || !form.courtSlot || !form.startTime || !form.endTime) {
+      return undefined;
+    }
+
+    const slotKey = `${form.courtId}-${form.bookingDate}-${form.startTime}-${form.endTime}-${user?.role || ''}`;
+    if (trackedSlotSelectionsRef.current.has(slotKey)) {
+      return undefined;
+    }
+
+    trackedSlotSelectionsRef.current.add(slotKey);
+    let cancelled = false;
+
+    recordBookingInterest({
+      courtId: Number(form.courtId),
+      bookingDate: form.bookingDate,
+      startTime: form.startTime,
+      endTime: form.endTime,
+    })
+      .then((data) => {
+        if (cancelled || !data?.slot) {
+          return;
+        }
+
+        setAvailability((current) => ({
+          ...current,
+          pricingFactor: Number(data.pricingFactor ?? current.pricingFactor ?? 0.5),
+          availableCourtSlots: current.availableCourtSlots.map((slot) => (
+            slot.startTime === data.slot.startTime && slot.endTime === data.slot.endTime
+              ? { ...slot, ...data.slot }
+              : slot
+          )),
+        }));
+      })
+      .catch(() => {
+        trackedSlotSelectionsRef.current.delete(slotKey);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [form.bookingDate, form.courtId, form.courtSlot, form.endTime, form.startTime, user?.role]);
+
   const availableCoachesForSelectedSlot = availability.coaches.filter((coach) => (
     coach.availableSlots.some((slot) => (
       `${slot.weekday}-${slot.startTime}-${slot.endTime}` === form.courtSlot
     ))
   ));
+  const selectedCourt = courts.find((court) => String(court.id) === form.courtId) || null;
+  const selectedSlot = availability.availableCourtSlots.find(
+    (slot) => `${slot.weekday}-${slot.startTime}-${slot.endTime}` === form.courtSlot,
+  ) || null;
+  const selectedCoach = availableCoachesForSelectedSlot.find((coach) => String(coach.id) === form.coachId) || null;
+  const selectedCourtPrice = Number(
+    selectedSlot?.dynamicCourtPricePerHour
+    ?? selectedSlot?.dynamicCourtPrice
+    ?? selectedCourt?.price_per_hour
+    ?? 0,
+  );
+  const selectedCoachPrice = !isCoachView && selectedCoach ? Number(selectedCoach.hourly_rate || 0) : 0;
+  const estimatedTotal = selectedCourtPrice + selectedCoachPrice;
 
   const handleChange = (event) => {
     if (event.target.name === 'courtSlot') {
@@ -215,7 +295,12 @@ export default function Booking() {
       startTime: '',
       endTime: '',
     }));
-    setAvailability({ availableWeekdays: [], availableCourtSlots: [], coaches: [] });
+    setAvailability({
+      availableWeekdays: [],
+      availableCourtSlots: [],
+      coaches: [],
+      pricingFactor: availability.pricingFactor,
+    });
   };
 
   const handleSubmit = async (event) => {
@@ -224,12 +309,15 @@ export default function Booking() {
     setMessage('');
 
     try {
-      await createBooking({
+      const response = await createBooking({
         ...form,
         courtId: Number(form.courtId),
         coachId: isCoachView ? null : (form.coachId ? Number(form.coachId) : null),
       });
-      setMessage(isCoachView ? 'Court booked successfully.' : 'Booking created successfully.');
+      setMessage(
+        `${isCoachView ? 'Court booked successfully.' : 'Booking created successfully.'} `
+        + `Total charged: Rs. ${Number(response.booking.total_price || 0).toFixed(2)}.`,
+      );
       setForm((current) => ({
         ...current,
         courtSlot: '',
@@ -239,7 +327,12 @@ export default function Booking() {
         endTime: '',
         notes: '',
       }));
-      setAvailability({ availableWeekdays: [], availableCourtSlots: [], coaches: [] });
+      setAvailability({
+        availableWeekdays: [],
+        availableCourtSlots: [],
+        coaches: [],
+        pricingFactor: availability.pricingFactor,
+      });
       loadPage();
     } catch (err) {
       setError(err.message);
@@ -291,6 +384,7 @@ export default function Booking() {
       : (reviewForm.reviewType === 'coach'
       ? 'No coaches from your booked sessions are available to review yet.'
       : 'No courts from your booked sessions are available to review yet.'));
+  const formatCurrency = (value) => Number(value || 0).toFixed(2);
 
   return (
     <div className="page-shell booking-shell">
@@ -353,7 +447,7 @@ export default function Booking() {
                   },
                   ...availability.availableCourtSlots.map((slot) => ({
                     value: `${slot.weekday}-${slot.startTime}-${slot.endTime}`,
-                    label: `${weekdayLabels[slot.weekday]} • ${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}`,
+                    label: `${weekdayLabels[slot.weekday]} • ${formatTime(slot.startTime)} - ${formatTime(slot.endTime)} • Rs. ${formatCurrency(slot.dynamicCourtPricePerHour || slot.dynamicCourtPrice || selectedCourt?.price_per_hour)}`,
                   })),
                 ]}
                 required
@@ -377,6 +471,19 @@ export default function Booking() {
                   ]}
                 />
               )}
+              {selectedSlot && (
+                <div className="pricing-summary">
+                  <strong>Live slot pricing</strong>
+                  <span>Court base price: Rs. {formatCurrency(selectedSlot.baseCourtPricePerHour || selectedCourt?.price_per_hour)}</span>
+                  <span>Interest count today: {selectedSlot.interestCount || 0}</span>
+                  <span>Dynamic court price: Rs. {formatCurrency(selectedCourtPrice)}</span>
+                  {!isCoachView && selectedCoach && (
+                    <span>Coach add-on: Rs. {formatCurrency(selectedCoachPrice)}</span>
+                  )}
+                  <span>Estimated total: Rs. {formatCurrency(estimatedTotal)}</span>
+                  <small>Formula: basePrice * (1 + {availability.pricingFactor} * interestCount)</small>
+                </div>
+              )}
               <Input label="Start time" type="time" name="startTime" value={form.startTime} readOnly required />
               <Input label="End time" type="time" name="endTime" value={form.endTime} readOnly required />
               <Input label="Notes" as="textarea" name="notes" value={form.notes} onChange={handleChange} rows="4" />
@@ -384,6 +491,7 @@ export default function Booking() {
                 {isCoachView
                   ? 'Pick a date first and the form will show only court slots that fit both the court schedule and your own availability.'
                   : 'Pick a date first and the form will show only bookable court slots and matching coaches for that day.'}
+                {' '}Dynamic pricing is recalculated from same-day demand for the selected slot only.
                 {availability.availableWeekdays.length > 0 && ` This court operates on ${availability.availableWeekdays.map((day) => weekdayLabels[day]).join(', ')}.`}
                 {!isCoachView && (bookingPref.courtId || bookingPref.coachId) && ' This page was prefilled from a slot you selected in search.'}
               </p>
@@ -410,9 +518,11 @@ export default function Booking() {
                     ? (booking.player_name ? `Player: ${booking.player_name}` : 'Self-booked court')
                     : (booking.coach_name ? `Coach: ${booking.coach_name}` : 'Court-only booking')}
                   {' • '}
-                  Status: {booking.status}
+                  Status: {getBookingDisplayStatus(booking)}
                 </span>
-                {booking.status === 'confirmed' && (!isCoachView || !booking.player_name) && (
+                {booking.status === 'confirmed'
+                  && getBookingLifecycle(booking) === 'upcoming'
+                  && (!isCoachView || !booking.player_name) && (
                   <Button variant="ghost" onClick={() => handleCancel(booking.id)}>Cancel</Button>
                 )}
               </div>

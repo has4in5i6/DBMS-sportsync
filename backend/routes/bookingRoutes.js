@@ -7,6 +7,7 @@ const {
   getCoachManagedBookings,
   getMyBookings,
   getOwnerManagedBookings,
+  recordBookingInterest,
 } = require('../controllers/bookingController');
 
 const router = express.Router();
@@ -16,6 +17,7 @@ router.get('/availability', requireRole('player', 'coach'), getBookingAvailabili
 router.get('/mine', requireRole('player', 'coach'), getMyBookings);
 router.get('/owner', requireRole('owner'), getOwnerManagedBookings);
 router.get('/coach', requireRole('coach'), getCoachManagedBookings);
+router.post('/interest', requireRole('player', 'coach'), recordBookingInterest);
 router.post('/', requireRole('player', 'coach'), createNewBooking);
 router.patch('/:bookingId/cancel', cancelExistingBooking);
 

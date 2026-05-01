@@ -221,6 +221,54 @@ const getCoachBookingsForDate = async (bookingDate, coachIds) => {
   return result.rows;
 };
 
+const getCourtSlotInterestCounts = async (courtId, bookingDate) => {
+  const result = await db.query(
+    `SELECT start_time, end_time, interest_count
+     FROM court_slot_interest
+     WHERE court_id = $1
+       AND booking_date = $2`,
+    [courtId, bookingDate],
+  );
+
+  return result.rows;
+};
+
+const getCourtSlotInterestCount = async (courtId, bookingDate, startTime, endTime) => {
+  const result = await db.query(
+    `SELECT interest_count
+     FROM court_slot_interest
+     WHERE court_id = $1
+       AND booking_date = $2
+       AND start_time = $3
+       AND end_time = $4`,
+    [courtId, bookingDate, startTime, endTime],
+  );
+
+  return Number(result.rows[0]?.interest_count || 0);
+};
+
+const incrementCourtSlotInterest = async (courtId, bookingDate, startTime, endTime) => {
+  const result = await db.query(
+    `INSERT INTO court_slot_interest (
+       court_id,
+       booking_date,
+       start_time,
+       end_time,
+       interest_count,
+       updated_at
+     )
+     VALUES ($1, $2, $3, $4, 1, CURRENT_TIMESTAMP)
+     ON CONFLICT (court_id, booking_date, start_time, end_time)
+     DO UPDATE
+     SET interest_count = court_slot_interest.interest_count + 1,
+         updated_at = CURRENT_TIMESTAMP
+     RETURNING *`,
+    [courtId, bookingDate, startTime, endTime],
+  );
+
+  return result.rows[0];
+};
+
 const cancelBooking = async (bookingId, userId, role) => {
   let query = `
     UPDATE bookings
@@ -258,7 +306,10 @@ module.exports = {
   getCoachBookingsForDate,
   getCoachBookings,
   getCourtBookingsForDate,
+  getCourtSlotInterestCount,
+  getCourtSlotInterestCounts,
   getOwnerBookings,
   getPlayerBookings,
+  incrementCourtSlotInterest,
   listConflictingBookings,
 };
